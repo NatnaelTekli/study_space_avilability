@@ -13,6 +13,12 @@ async function loadRooms() {
     "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
     "Law": "https://workrooms.ucalgary.ca/reserve/law"
 }; //Links for each building
+    const TFDLLinks = {
+    "150A (Capacity 4)": "https://workrooms.ucalgary.ca/space/9578",
+    "150B (Capacity 4)": "https://workrooms.ucalgary.ca/space/9579",
+    "150C (Capacity 4)": "https://workrooms.ucalgary.ca/space/9586",
+    "211B\u0028Screen\u0020Casting\u0020NOT\u0020Available\u0029 (Capacity 4)": "https://workrooms.ucalgary.ca/space/9582",
+};
 
     try {
         const response = await fetch(
@@ -53,11 +59,7 @@ async function loadRooms() {
 
             // Override logic for TFDL
             if (room.building === "TFDL") {
-                if (room.name == "150A (Capacity 4)") {
-                    bookingUrl = "https://workrooms.ucalgary.ca/space/9578";
-                } else {
-                    bookingUrl = buildingLinks[room.building];
-                }
+                bookingUrl = TFDLLinks[room.name] || buildingLinks[room.building];
             }
                     
             card.innerHTML = `
