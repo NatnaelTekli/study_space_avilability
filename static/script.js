@@ -7,7 +7,7 @@ async function loadRooms() {
     container.innerHTML = "";
 
     const buildingLinks = {
-    "TFDL": "https://workrooms.ucalgary.ca/reserve/tfdl-small",
+    "TFDL": "https://workrooms.ucalgary.ca/reserve/workrooms",
     "HSL": "https://workrooms.ucalgary.ca/reserve/hsl",
     "Gallagher": "https://workrooms.ucalgary.ca/reserve/gallagher",
     "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
