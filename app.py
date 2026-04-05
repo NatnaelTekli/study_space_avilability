@@ -93,7 +93,19 @@ def process_slots(data, selected_hour=None):
 # -----------------------------------
 def fallback_data():
     return [
-        {"name": "150A (Capacity 4)", "capacity": 4, "building": "TFDL", "status": "available"},
+        {"name": "150A", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "150B", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "150C", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "211", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "211B", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "211C", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "211D", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "211E", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "260B", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "260C", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "260E", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "260F", "capacity": 4, "building": "TFDL", "status": "available"},
+        # {"name": "260G", "capacity": 4, "building": "TFDL", "status": "available"},
         {"name": "TFDL 310B", "capacity": 6, "building": "TFDL", "status": "limited"},
         {"name": "Science 115", "capacity": 6, "building": "Science", "status": "busy"}
     ]
