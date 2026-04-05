@@ -49,8 +49,17 @@ async function loadRooms() {
             }
 
             // Get the specific link for this building, or a default one if not found
-            const bookingUrl = buildingLinks[room.building] || "https://workrooms.ucalgary.ca/";
+            bookingUrl = buildingLinks[room.building] || "https://workrooms.ucalgary.ca/";
 
+            // Override logic for TFDL
+            if (room.building === "TFDL") {
+                if (room.name == "150A (Capacity 4)") {
+                    bookingUrl = "https://workrooms.ucalgary.ca/space/9578";
+                } else {
+                    bookingUrl = buildingLinks[room.building];
+                }
+            }
+                    
             card.innerHTML = `
             <h3>${room.name}</h3>
             <p>${room.building}</p>

@@ -93,7 +93,7 @@ def process_slots(data, selected_hour=None):
 # -----------------------------------
 def fallback_data():
     return [
-        {"name": "TFDL 210A", "capacity": 4, "building": "TFDL", "status": "available"},
+        {"name": "150A (Capacity 4)", "capacity": 4, "building": "TFDL", "status": "available"},
         {"name": "TFDL 310B", "capacity": 6, "building": "TFDL", "status": "limited"},
         {"name": "Science 115", "capacity": 6, "building": "Science", "status": "busy"}
     ]
