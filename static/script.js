@@ -6,6 +6,14 @@ async function loadRooms() {
     const container = document.getElementById("rooms");
     container.innerHTML = "";
 
+    const buildingLinks = {
+    "TFDL": "https://workrooms.ucalgary.ca/reserve/tfdl-small",
+    "HSL": "https://workrooms.ucalgary.ca/reserve/hsl",
+    "Gallagher": "https://workrooms.ucalgary.ca/reserve/gallagher",
+    "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
+    "Law": "https://workrooms.ucalgary.ca/reserve/law"
+}; //Links for each building
+
     try {
         const response = await fetch(
             `/api/rooms?time=${time}&building=${building}&capacity=${capacity}`
@@ -40,12 +48,15 @@ async function loadRooms() {
                 statusText = "🔴 Busy";
             }
 
+            // Get the specific link for this building, or a default one if not found
+            const bookingUrl = buildingLinks[room.building] || "https://workrooms.ucalgary.ca/";
+
             card.innerHTML = `
-                <h3>${room.name}</h3>
-                <p>${room.building}</p>
-                <p>Capacity: ${room.capacity}</p>
-                <p class="status ${statusClass}">${statusText}</p>
-                <button onclick="bookRoom('${room.name}')">Book Now</button>
+            <h3>${room.name}</h3>
+            <p>${room.building}</p>
+            <p>Capacity: ${room.capacity}</p>
+            <p class="status ${room.status}">${statusText}</p>
+            <a href="${bookingUrl}" target="_blank" class="book-btn">Book Now</a>
             `;
 
             container.appendChild(card);
