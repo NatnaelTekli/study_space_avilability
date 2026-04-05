@@ -3,16 +3,15 @@ async function loadRooms() {
     const timeInput = document.getElementById("timeInput").value;
     const buildingFilter = document.getElementById("building").value;
     const container = document.getElementById("rooms");
+    container.innerHTML = "";
 
-    if (!dateInput || !timeInput) {
-        container.innerHTML = "<p>Please select date and time first.</p>";
-        return;
-    }
-
-    container.innerHTML = "<div class='loader'>Checking availability...</div>";
-
-    const start = `${dateInput} ${timeInput}:00`;
-    const end = new Date(new Date(start).getTime() + 60*60*1000).toISOString().slice(0, 19).replace('T', ' ');
+    const buildingLinks = {
+    "TFDL": "https://workrooms.ucalgary.ca/reserve/workrooms",
+    "HSL": "https://workrooms.ucalgary.ca/reserve/hsl",
+    "Gallagher": "https://workrooms.ucalgary.ca/reserve/gallagher",
+    "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
+    "Law": "https://workrooms.ucalgary.ca/reserve/law"
+}; //Links for each building
 
     try {
         const response = await fetch('/check', {
@@ -35,11 +34,31 @@ async function loadRooms() {
 
         filteredRooms.forEach(room => {
             const card = document.createElement("div");
-            card.className = `room-card ${room.available ? 'available' : 'busy'}`;
+            card.classList.add("room-card");
 
-            const statusEmoji = room.available ? "🟢" : "🔴";
-            const statusText = room.available ? "AVAILABLE" : "OCCUPIED";
+            let statusClass = room.status;
+            let statusText = "";
 
+            if (room.status === "available") {
+                statusText = "🟢 Available";
+            } else if (room.status === "limited") {
+                statusText = "🟡 Limited";
+            } else {
+                statusText = "🔴 Busy";
+            }
+
+            // Get the specific link for this building, or a default one if not found
+            bookingUrl = buildingLinks[room.building] || "https://workrooms.ucalgary.ca/";
+
+            // Override logic for TFDL
+            if (room.building === "TFDL") {
+                if (room.name == "150A (Capacity 4)") {
+                    bookingUrl = "https://workrooms.ucalgary.ca/space/9578";
+                } else {
+                    bookingUrl = buildingLinks[room.building];
+                }
+            }
+                    
             card.innerHTML = `
                 <h3>${room.name}</h3>
                 <p>Time: ${start} - ${end}</p>
