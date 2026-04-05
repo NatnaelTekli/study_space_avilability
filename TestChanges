@@ -1,0 +1,25 @@
+from flask import Flask
+import render_template, jsonify, request
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return '''
+    <form action="/clicked" method="post">
+        <button type="submit">Click me</button>
+    </form>
+    '''
+
+@app.route("/clicked", methods=["POST"])
+def clicked():
+     # This is your "message" from the server
+    message = "Hello! This message came from Python."
+    print("Message sent!")  # Appears in terminal
+    return jsonify({"message": message})  # Send JSON to frontend
+
+# @app.route("/send_message", methods=["POST"])
+# def send_message():
+#     pass
+
+app.run(debug=True)
