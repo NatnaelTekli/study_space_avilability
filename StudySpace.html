@@ -1,20 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My First Page</title>
+    <title>Study Room Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <h1>Hello, world!</h1>
-    <p>This is my website.</p>
+<header>
+    <h1>📚 Study Room Finder</h1>
+    <p>Find available rooms faster than everyone else</p>
+</header>
 
-    <button onclick="sayHello()">Click me</button>
+<section class="filters">
+    <input type="time" id="timeInput">
 
-    <script>
-        function sayHello() {
-            alert("Hello!");
-        }
-    </script>
+    <select id="building">
+        <option value="">All Buildings</option>
+        <option value="TFDL">TFDL</option>
+        <option value="Science">Science</option>
+        <option value="Math">Math</option>
+        <option value="ICT">ICT</option>
+    </select>
 
+    <select id="capacity">
+        <option value="">Any Capacity</option>
+        <option value="2">2+</option>
+        <option value="4">4+</option>
+        <option value="6">6+</option>
+    </select>
+
+    <button onclick="loadRooms()">Search</button>
+</section>
+
+<p id="updated"></p>
+
+<section id="rooms" class="rooms-container"></section>
+
+<script src="/static/script.js"></script>
 </body>
 </html>
