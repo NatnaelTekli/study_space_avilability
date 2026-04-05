@@ -3,6 +3,31 @@ import render_template, jsonify, request
 
 app = Flask(__name__)
 
+totalSearchLsit = ["Math","Social","English","Science"] #should contain all of the rooms from the api link
+
+def fetchDataForSearch(inputText):
+
+    length = len(inputText)
+    return_list = []
+
+    if length <= 0:
+        return totalSearchLsit #if theres nothing in the input, just return everything
+    if length <= 3:
+        if inputText in totalSearchLsit:
+            if inputText[0] == totalSearchLsit[0]:
+                return_list.append(inputText)
+        # for item in textList:
+        #     item_characters = item.split("")
+        #     for i in item_characters:
+        #         if i in item_characters:
+        #             return_list.append(item)
+        #If the string length is less/equal to 3, we just want to return items with matching characters
+    else:
+        if inputText in totalSearchLsit:
+            return_list.append(inputText)
+
+    return return_list
+
 @app.route("/")
 def home():
     return '''
@@ -18,8 +43,8 @@ def clicked():
     print("Message sent!")  # Appears in terminal
     return jsonify({"message": message})  # Send JSON to frontend
 
-# @app.route("/send_message", methods=["POST"])
-# def send_message():
-#     pass
+@app.route("/")
+def addToSearch():
+    return render_template("index.html", rooms=totalSearchLsit)
 
 app.run(debug=True)

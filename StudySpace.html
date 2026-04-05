@@ -36,6 +36,9 @@
     <label for="allRooms">Select a Room:</label>
     <select id="allRooms">
         <option value="">All Rooms</option>
+        {% for room in rooms %}
+            <option value="{{ room }}">{{ room }}</option>
+        {% endfor %}
     </select>
 </section>
 
