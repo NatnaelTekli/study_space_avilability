@@ -3,40 +3,34 @@
 <head>
     <title>Study Room Finder</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <header>
-    <h1>📚 Study Room Finder</h1>
-    <p>Find available rooms faster than everyone else</p>
+    <h1>Room Radar</h1>
+    <p>Find your next study sanctuary at UCalgary</p>
 </header>
 
 <section class="filters">
     <input type="time" id="timeInput">
-
+    
     <select id="building">
         <option value="">All Buildings</option>
         <option value="TFDL">TFDL</option>
         <option value="Science">Science</option>
         <option value="Math">Math</option>
-        <option value="ICT">ICT</option>
+        <option value="HSL">Health Sciences</option>
     </select>
 
     <select id="capacity">
         <option value="">Any Capacity</option>
-        <option value="2">2+</option>
-        <option value="4">4+</option>
-        <option value="6">6+</option>
+        <option value="2">2+ People</option>
+        <option value="4">4+ People</option>
+        <option value="6">6+ People</option>
     </select>
 
-    <button onclick="loadRooms()">Search</button>
-</section>
-
-<section class="all-rooms">
-    <label for="allRooms">Select a Room:</label>
-    <select id="allRooms">
-        <option value="">All Rooms</option>
-    </select>
+    <button onclick="loadRooms()">Search Available</button>
 </section>
 
 <p id="updated"></p>
