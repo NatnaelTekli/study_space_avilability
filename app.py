@@ -1,155 +1,70 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, render_template, request, jsonify
 import requests
-import datetime
 
 app = Flask(__name__)
 
-# -----------------------------------
-# CONFIG
-# -----------------------------------
+# Endpoint to fetch all rooms dynamically from API
 API_URL = "https://workrooms.ucalgary.ca/spaces/availability/grid"
 
-DEFAULT_PAYLOAD = {
-    "lid": "1035",
-    "gid": "7947",
-    "eid": "-1",
-    "seat": "0",
-    "seatId": "0",
-    "zone": "0",
-    "pageIndex": "0",
-    "pageSize": "18"
-}
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Referer": "https://workrooms.ucalgary.ca/",
-    "Content-Type": "application/x-www-form-urlencoded"
-}
-
-# -----------------------------------
-# PROCESS REAL DATA
-# -----------------------------------
-def process_slots(data, selected_hour=None):
-    rooms = {}
-
-    for slot in data.get("slots", []):
-        room_id = slot["itemId"]
-
-        if room_id not in rooms:
-            rooms[room_id] = {
-                "name": f"Room {room_id}",
-                "available": 0,
-                "total": 0,
-                "matching_available": 0,
-                "matching_total": 0
-            }
-
-        start_time = slot["start"]
-        hour = int(start_time.split(" ")[1].split(":")[0])
-
-        is_booked = slot.get("className") == "s-lc-eq-checkout"
-
-        rooms[room_id]["total"] += 1
-        if not is_booked:
-            rooms[room_id]["available"] += 1
-
-        # If user selected a specific time
-        if selected_hour is not None:
-            if hour == selected_hour:
-                rooms[room_id]["matching_total"] += 1
-                if not is_booked:
-                    rooms[room_id]["matching_available"] += 1
-
-    result = []
-
-    for room_id, room in rooms.items():
-
-        # Use specific time if selected
-        if selected_hour is not None and room["matching_total"] > 0:
-            ratio = room["matching_available"] / room["matching_total"]
-        else:
-            ratio = room["available"] / room["total"]
-
-        if ratio > 0.7:
-            status = "available"
-        elif ratio > 0.3:
-            status = "limited"
-        else:
-            status = "busy"
-
-        result.append({
-            "name": room["name"],
-            "capacity": 4,  # placeholder for now
-            "building": "TFDL",
-            "status": status,
-            "available_slots": room["available"],
-            "total_slots": room["total"]
-        })
-
-    return result
-
-# -----------------------------------
-# FALLBACK (if API fails)
-# -----------------------------------
-def fallback_data():
+# Example: Fetch initial rooms data from API or a "room list" endpoint
+# For this example, we simulate a dynamic fetch
+def get_all_rooms():
+    # Ideally, the API provides a room listing endpoint; otherwise, maintain a dynamic cache
+    # Here we simulate fetching dynamic room list
     return [
-        {"name": "150A (Capacity 4)", "capacity": 4, "building": "TFDL", "status": "available"},
-        {"name": "TFDL 310B", "capacity": 6, "building": "TFDL", "status": "limited"},
-        {"name": "Science 115", "capacity": 6, "building": "Science", "status": "busy"}
+        {"name": "TFDL Small Workrooms (4-6)", "itemId": 9580, "checksum": "365c334fb074aaceeb243197e34ff729"},
+        {"name": "TFDL Large Meeting Rooms (6+)", "itemId": 7556, "checksum": "612045f86a0099e8eeaac89d00e96de0"},
+        {"name": "HSL", "itemId": 9600, "checksum": "64042d2d0f4cc599720899d59722d691"},
+        {"name": "Gallagher Library", "itemId": 34486, "checksum": "50d75a93f6a0068a9bfb9a57ccef39f8"},
+        {"name": "Lab NEXT", "itemId": 9549, "checksum": "eed16f7092b81755bbb777bc81516ee5"}
     ]
 
-# -----------------------------------
-# ROUTES
-# -----------------------------------
 
-@app.route("/")
-def home():
+@app.route('/')
+def index():
     return render_template("index.html")
 
-@app.route("/api/rooms")
-def get_rooms():
-    try:
-        # Get user-selected time and filters
-        time_str = request.args.get("time")
-        building_filter = request.args.get("building")
-        capacity_filter = request.args.get("capacity")
 
-        selected_hour = None
-        if time_str:
-            selected_hour = int(time_str.split(":")[0])
+@app.route('/check', methods=['POST'])
+def check_availability():
+    data = request.json
+    start_time = data.get("start")
+    end_time = data.get("end")
 
-        today = datetime.date.today().strftime("%Y-%m-%d")
+    rooms = get_all_rooms()
+    results = []
 
-        payload = DEFAULT_PAYLOAD.copy()
-        payload["start"] = today
-        payload["end"] = today
+    for room in rooms:
+        payload = {
+            "start": start_time,
+            "end": end_time,
+            "itemId": room["itemId"],
+            "checksum": room["checksum"]
+        }
 
-        response = requests.post(API_URL, data=payload, headers=HEADERS, timeout=5)
-        raw_data = response.json()
+        try:
+            response = requests.post(API_URL, json=payload)
+            resp_json = response.json()
 
-        if not raw_data.get("slots"):
-            return jsonify(fallback_data())
+            # Example: API returns {"available": true/false, "booking_url": "..."}
+            available = resp_json.get("available", False)
+            booking_url = resp_json.get("booking_url", "#")  # fallback if URL is not provided
 
-        rooms = process_slots(raw_data, selected_hour)
+            results.append({
+                "name": room["name"],
+                "available": available,
+                "booking_url": booking_url
+            })
+        except Exception as e:
+            results.append({
+                "name": room["name"],
+                "available": False,
+                "booking_url": "#",
+                "error": str(e)
+            })
 
-        if building_filter:
-            rooms = [room for room in rooms if room["building"] == building_filter]
+    return jsonify(results)
 
-        if capacity_filter:
-            try:
-                required_capacity = int(capacity_filter)
-                rooms = [room for room in rooms if room["capacity"] >= required_capacity]
-            except ValueError:
-                pass
 
-        return jsonify(rooms)
-
-    except Exception as e:
-        print("API failed:", e)
-        return jsonify(fallback_data())
-
-# -----------------------------------
-# RUN
-# -----------------------------------
 if __name__ == "__main__":
     app.run(debug=True)

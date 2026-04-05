@@ -1,92 +1,57 @@
 async function loadRooms() {
-    const time = document.getElementById("timeInput").value;
-    const building = document.getElementById("building").value;
-    const capacity = document.getElementById("capacity").value;
-
+    const dateInput = document.getElementById("dateInput").value;
+    const timeInput = document.getElementById("timeInput").value;
+    const buildingFilter = document.getElementById("building").value;
     const container = document.getElementById("rooms");
-    container.innerHTML = "";
 
-    const buildingLinks = {
-    "TFDL": "https://workrooms.ucalgary.ca/reserve/workrooms",
-    "HSL": "https://workrooms.ucalgary.ca/reserve/hsl",
-    "Gallagher": "https://workrooms.ucalgary.ca/reserve/gallagher",
-    "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
-    "Law": "https://workrooms.ucalgary.ca/reserve/law"
-}; //Links for each building
+    if (!dateInput || !timeInput) {
+        container.innerHTML = "<p>Please select date and time first.</p>";
+        return;
+    }
+
+    container.innerHTML = "<div class='loader'>Checking availability...</div>";
+
+    const start = `${dateInput} ${timeInput}:00`;
+    const end = new Date(new Date(start).getTime() + 60*60*1000).toISOString().slice(0, 19).replace('T', ' ');
 
     try {
-        const response = await fetch(
-            `/api/rooms?time=${time}&building=${building}&capacity=${capacity}`
-        );
-
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
+        const response = await fetch('/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ start, end })
+        });
 
         const rooms = await response.json();
+        container.innerHTML = "";
 
-        if (!rooms || rooms.length === 0) {
-            container.innerHTML = `
-                <p class="no-results">No rooms found. Try a different time or filter.</p>
-            `;
-            document.getElementById("updated").innerText = "";
+        const filteredRooms = buildingFilter
+            ? rooms.filter(r => r.name.toLowerCase().includes(buildingFilter.toLowerCase()))
+            : rooms;
+
+        if (filteredRooms.length === 0) {
+            container.innerHTML = "<p>No rooms available at this time.</p>";
             return;
         }
 
-        rooms.forEach(room => {
+        filteredRooms.forEach(room => {
             const card = document.createElement("div");
-            card.classList.add("room-card");
+            card.className = `room-card ${room.available ? 'available' : 'busy'}`;
 
-            let statusClass = room.status;
-            let statusText = "";
+            const statusEmoji = room.available ? "🟢" : "🔴";
+            const statusText = room.available ? "AVAILABLE" : "OCCUPIED";
 
-            if (room.status === "available") {
-                statusText = "🟢 Available";
-            } else if (room.status === "limited") {
-                statusText = "🟡 Limited";
-            } else {
-                statusText = "🔴 Busy";
-            }
-
-            // Get the specific link for this building, or a default one if not found
-            bookingUrl = buildingLinks[room.building] || "https://workrooms.ucalgary.ca/";
-
-            // Override logic for TFDL
-            if (room.building === "TFDL") {
-                if (room.name == "150A (Capacity 4)") {
-                    bookingUrl = "https://workrooms.ucalgary.ca/space/9578";
-                } else {
-                    bookingUrl = buildingLinks[room.building];
-                }
-            }
-                    
             card.innerHTML = `
-            <h3>${room.name}</h3>
-            <p>${room.building}</p>
-            <p>Capacity: ${room.capacity}</p>
-            <p class="status ${room.status}">${statusText}</p>
-            <a href="${bookingUrl}" target="_blank" class="book-btn">Book Now</a>
+                <h3>${room.name}</h3>
+                <p>Time: ${start} - ${end}</p>
+                <div class="status-badge">${statusEmoji} ${statusText}</div>
+                ${room.available ? `<a href="${room.booking_url}" target="_blank" class="book-btn">Book Room</a>` 
+                                   : `<button class="book-btn disabled" disabled>Unavailable</button>`}
             `;
-
             container.appendChild(card);
         });
 
-        document.getElementById("updated").innerText =
-            "Last updated: " + new Date().toLocaleTimeString();
-    } catch (error) {
-        container.innerHTML = `
-            <p class="no-results">Error loading rooms: ${error.message}</p>
-        `;
-        document.getElementById("updated").innerText = "";
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = "<p>Error connecting to the server. Please try again.</p>";
     }
 }
-
-function bookRoom(roomName) {
-    window.open(
-        "https://library.ucalgary.ca/services/bookings/workrooms",
-        "_blank"
-    );
-}
-
-// Load on page start
-loadRooms();
