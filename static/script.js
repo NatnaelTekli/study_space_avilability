@@ -12,7 +12,18 @@ async function loadRooms() {
     "Gallagher": "https://workrooms.ucalgary.ca/reserve/gallagher",
     "EEEL": "https://workrooms.ucalgary.ca/reserve/eeel",
     "Law": "https://workrooms.ucalgary.ca/reserve/law"
-}; //Links for each building
+    }; //Links for each building
+
+    try {
+        const fetchGridData = async () => {
+            const response = await fetch('https://workrooms.ucalgary.ca/space/ajax/grid?lid=321&gid=5366&date=2026-06-06');
+            const data = await response.json();
+            console.log("Live Grid Data:", data);
+        };
+    } catch (error) {
+        console.error("Error fetching live grid data:", error);
+    }
+    
 
     try {
         const response = await fetch(
