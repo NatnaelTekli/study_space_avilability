@@ -1,14 +1,52 @@
-function parseRoomAvailability(jsonData) {
-    // Map through each object, checking for the className indicator
-    const statusString = jsonData.map(item => {
-        if (item.className === "s-lc-eq-checkout") {
-            return "X"; // Booked / Checked out
-        } else {
-            return "0"; // Available / No checkout indicator
-        }
-    }).join(""); // Combine the array elements into a single string
+var roomNames = {}
 
-    return statusString;
+async function parseExternalPageForTitle(itemId) {
+    const link = 'https://workrooms.ucalgary.ca/space/' + itemId; // Replace with the actual URL pattern
+    try {
+        // Fetch the raw HTML of a page
+        if (!roomNames[itemId]) { // Check if the room name is not already cached
+            //doing these helps so that we don't have to keep fetching the same page over and over again
+            roomNames[itemId] = true;
+            const response = await fetch(link); // Replace with the actual URL pattern
+            const htmlText = await response.text();
+
+            // return roomName;
+            // 1. Find where 'var resources =' starts in the HTML text
+            const startIndex = htmlText.indexOf('var resources =');
+            if (startIndex === -1) {
+                console.log("Resources variable not found in HTML.");
+                return [];
+            }
+
+            const subString = htmlText.slice(startIndex);
+            const nextVarIndex = subString.indexOf('\nvar ');
+            const resourcesCode = nextVarIndex !== -1 ? subString.slice(0, nextVarIndex) : subString;
+
+            const match = await resourcesCode.match(/var\s+resources\s*=\s*([\s\S]*?);/);
+            if (!match) return [];
+
+            try {
+                const resourcesArray = await new Function(`return ${match[1]};`)(); //evaluate the textblock as an actual section of code (dictionary)
+
+                // Map through each resource object and extract the 'title' property
+                const titles = await resourcesArray.map(resource => resource.title);
+                const firstTitle = titles[0];
+                
+                roomNames[itemId] = firstTitle; // Cache the title for future use
+
+                return firstTitle
+            } catch (error) {
+                console.error("Failed to parse resources script block:", error);
+                return [];
+            }
+        } else {
+            return roomNames[itemId]; //get the title corresponding to the itemId 
+        }
+        
+    } catch (error) {
+        console.error("Failed to parse HTML:", error);
+        return itemId;
+    }
 }
 
 async function getGridData() {
@@ -20,8 +58,8 @@ async function getGridData() {
         formData.append('seat', '0');
         formData.append('seatId', '0');
         formData.append('zone', '0');
-        formData.append('start', '2026-08-03'); //start getting the availability from this date (not inclusive)
-        formData.append('end', '2026-08-09'); //get all the availability up to this date (not inclusive)
+        formData.append('start', '2026-08-06'); //start getting the availability from this date (not inclusive)
+        formData.append('end', '2026-08-08'); //get all the availability up to this date (not inclusive)
         formData.append('pageIndex', '0');
         formData.append('pageSize', '18');
 
@@ -43,11 +81,13 @@ async function getGridData() {
         const data = await response.json();
         const slotsArray = data.slots || [];//data.events || [];
 
-        const statusByItem = slotsArray.reduce((acc, item) => {
+        const statusByItem = {};
+        for (const item of slotsArray) {
             // Make sure the item and itemId exist
-            if (!item || item.itemId === undefined) return acc; //item id corresponds to the room number
+            if (!item || item.itemId === undefined) continue; //item id corresponds to the room number
 
             const id = item.itemId;
+            const title = await parseExternalPageForTitle(id); // Fetch the room name from the external page
             const status = item.className === "s-lc-eq-checkout" ? "❌" : "✅";
             
             // Extract just the time part (e.g., "11:00:00") from "2026-08-05 11:00:00"
@@ -56,22 +96,19 @@ async function getGridData() {
             const time = parts[1]; // e.g., "11:00:00"
 
             // Initialize the array for this itemId if it doesn't exist yet
-            if (!acc[id]) {
-                acc[id] = [];
+            if (!statusByItem[title]) {
+                statusByItem[title] = [];
             }
 
             // Push an object containing both the time and status
-            acc[id].push({
+            statusByItem[title].push({
                 date: date,
                 time: time,
                 status: status
             });
-
-            return acc;
-        }, {});
+        }
 
         console.log(statusByItem);
-        console.log("Parsed Status String: ", statusString);
     } catch (error) {
         console.error("Failed:", error);
     }
