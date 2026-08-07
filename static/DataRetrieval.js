@@ -49,7 +49,7 @@ async function parseExternalPageForTitle(itemId) {
     }
 }
 
-async function getGridData() {
+export async function getGridData() {
     try {
         const formData = new URLSearchParams();
         formData.append('lid', '1035');
@@ -58,8 +58,8 @@ async function getGridData() {
         formData.append('seat', '0');
         formData.append('seatId', '0');
         formData.append('zone', '0');
-        formData.append('start', '2026-08-06'); //start getting the availability from this date (not inclusive)
-        formData.append('end', '2026-08-08'); //get all the availability up to this date (not inclusive)
+        formData.append('start', '2026-08-07'); //start getting the availability from this date (not inclusive)
+        formData.append('end', '2026-08-09'); //get all the availability up to this date (not inclusive)
         formData.append('pageIndex', '0');
         formData.append('pageSize', '18');
 
@@ -93,7 +93,17 @@ async function getGridData() {
             // Extract just the time part (e.g., "11:00:00") from "2026-08-05 11:00:00"
             const parts = item.start ? item.start.split(" ") : ["", ""];
             const date = parts[0]; // e.g., "2026-08-05"
-            const time = parts[1]; // e.g., "11:00:00"
+            const rawTime = parts[1]; // e.g., "11:00:00"
+
+            endIndex = rawTime.indexOf(":");
+            var time = "";
+            let numTime = Number(rawTime.slice(0, endIndex)); //We want the time to be a single number
+            if (numTime >= 12) {
+                time += String(numTime - 12) + "p"; //PM
+            } else {
+                time += String(numTime) + "a"; //AM
+            }
+            
 
             // Initialize the array for this itemId if it doesn't exist yet
             if (!statusByItem[title]) {
@@ -114,4 +124,25 @@ async function getGridData() {
     }
 }
 
-getGridData();
+//Example of one room's availability data structure after processing:
+// '350F (Capacity 4)': [
+//     { date: '2026-08-07', time: '11:00:00', status: '❌' },
+//     { date: '2026-08-07', time: '12:00:00', status: '❌' },
+//     { date: '2026-08-07', time: '13:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '14:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '15:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '16:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '17:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '18:00:00', status: '✅' },
+//     { date: '2026-08-07', time: '19:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '10:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '11:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '12:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '13:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '14:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '15:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '16:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '17:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '18:00:00', status: '✅' },
+//     { date: '2026-08-08', time: '19:00:00', status: '✅' }
+//   ]

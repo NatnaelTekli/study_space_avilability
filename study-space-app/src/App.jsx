@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import {getGridData} from './static/DataRetrieval.js';
 
 /* ── UCalgary theme (light mode, matches Libraries booking system) ─── */
 
@@ -377,26 +378,29 @@ function LineChart({ categories, series, height = 160 }) {
 
 /* ── Mock data (TFDL Student Workrooms) ─────────────────────────────── */
 
-const ALL_ROOMS = [
-  { id: "150A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
-  { id: "150B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
-  { id: "150C", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
-  { id: "150D", building: "TFDL", capacity: 4, accessible: false, outlets: true, floor: 1 },
-  { id: "150E", building: "TFDL", capacity: 4, accessible: true, outlets: false, floor: 1 },
-  { id: "151", building: "TFDL", capacity: 8, accessible: true, outlets: true, floor: 1 },
-  { id: "152", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
-  { id: "260A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
-  { id: "260B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
-  { id: "340", building: "MacHall", capacity: 10, accessible: true, outlets: true, floor: 3 },
-  { id: "ICT-210", building: "ICT", capacity: 6, accessible: true, outlets: true, floor: 2 },
-  { id: "ST-135", building: "Science Theatres", capacity: 8, accessible: false, outlets: true, floor: 1 },
-];
+// const ALL_ROOMS = [
+//   { id: "150A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
+//   { id: "150B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
+//   { id: "150C", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
+//   { id: "150D", building: "TFDL", capacity: 4, accessible: false, outlets: true, floor: 1 },
+//   { id: "150E", building: "TFDL", capacity: 4, accessible: true, outlets: false, floor: 1 },
+//   { id: "151", building: "TFDL", capacity: 8, accessible: true, outlets: true, floor: 1 },
+//   { id: "152", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
+//   { id: "260A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
+//   { id: "260B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
+//   { id: "340", building: "MacHall", capacity: 10, accessible: true, outlets: true, floor: 3 },
+//   { id: "ICT-210", building: "ICT", capacity: 6, accessible: true, outlets: true, floor: 2 },
+//   { id: "ST-135", building: "Science Theatres", capacity: 8, accessible: false, outlets: true, floor: 1 },
+// ];
+
+const ALL_ROOMS = getGridData();
 
 const TIME_SLOTS = ["9a", "10a", "11a", "12p", "1p", "2p", "3p", "4p", "5p", "6p", "7p"];
 
 function slotAvailable(roomId, slotIdx) {
   const seed = roomId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return (seed + slotIdx * 7) % 5 !== 0 && (seed + slotIdx * 3) % 7 !== 0;
+  //EDIT THIS! (Time slots are currently randomly generated based on roomId and slotIdx, but you can replace this with actual availability data)
 }
 
 function slotsForRoom(roomId) {

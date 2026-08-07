@@ -5,7 +5,7 @@ import datetime
 app = Flask(__name__)
 
 # -----------------------------------
-# CONFIG
+# CONFIG 
 # -----------------------------------
 API_URL = "https://workrooms.ucalgary.ca/spaces/availability/grid"
 
