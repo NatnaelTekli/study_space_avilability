@@ -1,11 +1,11 @@
-var roomNames = {}
+var roomNames = {};
 
 async function parseExternalPageForTitle(itemId) {
     const link = 'https://workrooms.ucalgary.ca/space/' + itemId; // Replace with the actual URL pattern
     try {
         // Fetch the raw HTML of a page
         if (!roomNames[itemId]) { // Check if the room name is not already cached
-            //doing these helps so that we don't have to keep fetching the same page over and over again
+            //doing these helps so that we dont have to keep fetching the same page over and over again
             roomNames[itemId] = true;
             const response = await fetch(link); // Replace with the actual URL pattern
             const htmlText = await response.text();
@@ -49,7 +49,7 @@ async function parseExternalPageForTitle(itemId) {
     }
 }
 
-export async function getGridData() {
+export default async function getGridData() {
     try {
         const formData = new URLSearchParams();
         formData.append('lid', '1035');
@@ -58,8 +58,8 @@ export async function getGridData() {
         formData.append('seat', '0');
         formData.append('seatId', '0');
         formData.append('zone', '0');
-        formData.append('start', '2026-08-07'); //start getting the availability from this date (not inclusive)
-        formData.append('end', '2026-08-09'); //get all the availability up to this date (not inclusive)
+        formData.append('start', '2026-08-10'); //start getting the availability from this date (not inclusive)
+        formData.append('end', '2026-08-12'); //get all the availability up to this date (not inclusive)
         formData.append('pageIndex', '0');
         formData.append('pageSize', '18');
 
@@ -87,41 +87,84 @@ export async function getGridData() {
             if (!item || item.itemId === undefined) continue; //item id corresponds to the room number
 
             const id = item.itemId;
-            const title = await parseExternalPageForTitle(id); // Fetch the room name from the external page
-            const status = item.className === "s-lc-eq-checkout" ? "❌" : "✅";
+            var title = await parseExternalPageForTitle(id); // Fetch the room name from the external page
+            const status = item.className === "s-lc-eq-checkout" ? false : true;
+
+            const match = title.match(/Capacity\s+(\d+)/);
+            const capacity = match ? match[1] : "?"; // get the capacity number or "?" if not found
+
+            var count_numbers = 0;
+            var new_title = "";
+            for (let ind = 0; ind < title.length; ind++) {
+                const current_char = title[ind];
+                if (count_numbers >= 3) {
+                    if (current_char != " ") {
+                        new_title += current_char;
+                        break;
+                    }
+                } else {
+                    if (typeof Number(current_char) == "number") {
+                        count_numbers += 1;
+                        new_title += current_char;
+                    }
+                }
+            }
+            title = new_title; // Update title to only include the room number and letter (e.g., "350J")
+            
+            // for (let ind = 0; ind < title.length; ind++) {
+            //     if (title[ind] == "(" || title[ind] == " ") {
+            //         title = title.slice(0, ind - 1); // Remove the capacity part //350J (Capacity 4) -> 350J
+            //         break;
+            //     }
+            // }
             
             // Extract just the time part (e.g., "11:00:00") from "2026-08-05 11:00:00"
             const parts = item.start ? item.start.split(" ") : ["", ""];
             const date = parts[0]; // e.g., "2026-08-05"
             const rawTime = parts[1]; // e.g., "11:00:00"
 
-            endIndex = rawTime.indexOf(":");
+            var endIndex = rawTime.indexOf(":");
             var time = "";
             let numTime = Number(rawTime.slice(0, endIndex)); //We want the time to be a single number
             if (numTime >= 12) {
-                time += String(numTime - 12) + "p"; //PM
+                var mockTime = numTime - 12;
+                if (mockTime == 0) {
+                    mockTime = 12; // Handle the case for 12 PM correctly
+                }
+                time += String(mockTime) + "p"; //PM
             } else {
                 time += String(numTime) + "a"; //AM
             }
-            
 
             // Initialize the array for this itemId if it doesn't exist yet
             if (!statusByItem[title]) {
-                statusByItem[title] = [];
+                statusByItem[title] = {};
+                if (!statusByItem[title][date]) { // Initialize the date for this itemId if it doesn't exist yet
+                    statusByItem[title][date] = [];
+                }
+            }
+
+            if (!statusByItem[title]["capacity"]) {
+                statusByItem[title]["capacity"] = capacity; // Store the capacity for this room
             }
 
             // Push an object containing both the time and status
-            statusByItem[title].push({
-                date: date,
+            statusByItem[title][date].push({
                 time: time,
                 status: status
             });
         }
 
         console.log(statusByItem);
+        // console.log(statusByItem["350F (Capacity 4)"]["2026-08-11"])
     } catch (error) {
         console.error("Failed:", error);
     }
+}
+
+const testCode = true;
+if (testCode) {
+    getGridData();
 }
 
 //Example of one room's availability data structure after processing:
@@ -146,3 +189,21 @@ export async function getGridData() {
 //     { date: '2026-08-08', time: '18:00:00', status: '✅' },
 //     { date: '2026-08-08', time: '19:00:00', status: '✅' }
 //   ]
+
+// '350F (Capacity 4)': {
+//     '2026-08-11': [
+//       { time: '7a', status: 'True' },
+//       { time: '8a', status: 'True' },
+//       { time: '9a', status: 'True' },
+//       { time: '10a', status: 'True' },
+//       { time: '11a', status: 'True' },
+//       { time: '12p', status: 'True' },
+//       { time: '1p', status: 'True' },
+//       { time: '2p', status: 'True' },
+//       { time: '3p', status: 'True' },
+//       { time: '4p', status: 'True' },
+//       { time: '5p', status: 'True' },
+//       { time: '6p', status: 'True' },
+//       [Object]
+//     ]
+//   }
