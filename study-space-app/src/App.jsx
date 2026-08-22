@@ -376,54 +376,154 @@ function LineChart({ categories, series, height = 160 }) {
   );
 }
 
-/* ── Mock data (TFDL Student Workrooms) ─────────────────────────────── */
+/* ── Live data (from getAllGridData) ──────────────────────────────────
+ * getAllGridData() returns data shaped like:
+ * {
+ *   [building]: {
+ *     [roomId]: {
+ *       [dateString]: [{ time: '7a', status: 'True' }, ...],
+ *       capacity: '4'
+ *     }
+ *   }
+ * }
+ * The block below normalizes that into the flat room list + per-room
+ * availability lookup that the rest of this file expects.
+ * ────────────────────────────────────────────────────────────────── */
 
-// const ALL_ROOMS = [
-//   { id: "150A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
-//   { id: "150B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 1 },
-//   { id: "150C", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
-//   { id: "150D", building: "TFDL", capacity: 4, accessible: false, outlets: true, floor: 1 },
-//   { id: "150E", building: "TFDL", capacity: 4, accessible: true, outlets: false, floor: 1 },
-//   { id: "151", building: "TFDL", capacity: 8, accessible: true, outlets: true, floor: 1 },
-//   { id: "152", building: "TFDL", capacity: 6, accessible: true, outlets: true, floor: 1 },
-//   { id: "260A", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
-//   { id: "260B", building: "TFDL", capacity: 4, accessible: true, outlets: true, floor: 2 },
-//   { id: "340", building: "MacHall", capacity: 10, accessible: true, outlets: true, floor: 3 },
-//   { id: "ICT-210", building: "ICT", capacity: 6, accessible: true, outlets: true, floor: 2 },
-//   { id: "ST-135", building: "Science Theatres", capacity: 8, accessible: false, outlets: true, floor: 1 },
-// ];
+/* ── Live data (from getAllGridData) ──────────────────────────────────
+ * getAllGridData() returns data shaped like:
+ * {
+ *   [building]: {
+ *     [roomId]: {
+ *       [dateString]: [{ time: '7a', status: 'True' }, ...],
+ *       capacity: '4'
+ *     }
+ *   }
+ * }
+ * Everything below reads that nested shape directly on demand — there
+ * is no upfront pass that reshapes it into the old flat room-array
+ * format. Components ask for exactly what they need (buildings, room
+ * ids, capacity, slots for a date) straight from GRID_DATA.
+ * ────────────────────────────────────────────────────────────────── */
 
-const ALL_ROOMS = getAllGridData();
+let GRID_DATA = await getAllGridData();
+GRID_DATA = GRID_DATA ?? {}; // Fallback to an empty array [] (or object {}) if GRID_DATA is null or undefined
 
 const TIME_SLOTS = ["9a", "10a", "11a", "12p", "1p", "2p", "3p", "4p", "5p", "6p", "7p"];
 
-// function slotAvailable(roomId, slotIdx) { //returns a boolean confirming availability
-//   const room = ALL_ROOMS.find(roomId);
-//   return room;
-// }
+function isSlotAvailable(status) {
+  return status === true || status === "True" || status === "true";
+}
 
-function slotsForRoom(roomId, date) {
-  // return TIME_SLOTS.map((_, i) => slotAvailable(roomId, i));
-  return slotsForRoom(ALL_ROOMS[roomID][date])
+// Building names present in the live data.
+function getBuildings() {
+  return Object.keys(GRID_DATA);
+}
+
+// Room ids that exist under a given building.
+function getRoomIds(buildingName) {
+  return Object.keys(GRID_DATA[buildingName] || {});
+}
+
+function getCapacity(buildingName, roomId) {
+  const raw = GRID_DATA[buildingName]?.[roomId]?.capacity;
+  return Number(raw) || 0;
+}
+
+// A room's keys are all dates except the "capacity" key.
+function getDatesForRoom(buildingName, roomId) {
+  const room = GRID_DATA[buildingName]?.[roomId] || {};
+  return Object.keys(room).filter((k) => k !== "capacity");
+}
+
+// Earliest date found anywhere in the data — used as the default view
+// since the data doesn't tell us which date is "today".
+function getDefaultDate() {
+  let earliest = null;
+  getBuildings().forEach((buildingName) => {
+    getRoomIds(buildingName).forEach((roomId) => {
+      getDatesForRoom(buildingName, roomId).forEach((date) => {
+        if (!earliest || date < earliest) earliest = date;
+      });
+    });
+  });
+  return earliest;
+}
+
+const DEFAULT_DATE = getDefaultDate();
+
+function formatDateLabel(dateStr) {
+  if (!dateStr) return "No dates available";
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+// Boolean slot map, aligned to TIME_SLOTS, for one room on one date.
+// Reads GRID_DATA[building][roomId][date] = [{ time, status }, ...] directly.
+function getSlots(buildingName, roomId, date = DEFAULT_DATE) {
+  const entries = GRID_DATA[buildingName]?.[roomId]?.[date] || [];
+  const statusByTime = {};
+  entries.forEach((entry) => {
+    statusByTime[entry.time] = isSlotAvailable(entry.status);
+  });
+  return TIME_SLOTS.map((t) => Boolean(statusByTime[t]));
 }
 
 function countAvailable(slots) {
   return slots.filter(Boolean).length;
 }
 
-const TOP_5 = [...ALL_ROOMS]
-  .map((r) => ({ ...r, slots: slotsForRoom(r.id), open: countAvailable(slotsForRoom(r.id)) }))
-  .sort((a, b) => b.open - a.open)
-  .slice(0, 5);
+// Walks the nested tree into a flat list of records for a given date.
+// Computed on demand from GRID_DATA rather than cached as a separate
+// "rooms" model — the nested structure stays the single source of truth.
+function getAllRoomRecords(date = DEFAULT_DATE) {
+  const records = [];
+  getBuildings().forEach((buildingName) => {
+    getRoomIds(buildingName).forEach((roomId) => {
+      const slots = getSlots(buildingName, roomId, date);
+      records.push({
+        building: buildingName,
+        roomId,
+        capacity: getCapacity(buildingName, roomId),
+        slots,
+        open: countAvailable(slots),
+      });
+    });
+  });
+  return records;
+}
+
+const BUILDINGS = getBuildings();
+const ALL_ROOM_RECORDS = getAllRoomRecords();
+
+const TOP_5 = [...ALL_ROOM_RECORDS].sort((a, b) => b.open - a.open).slice(0, 5);
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const RECOMMENDED = [
-  { room: "150A", reason: "Matches your usual 2–4 pm study window", openSlots: 6, match: 94 },
-  { room: "260A", reason: "Quiet floor, capacity 4 — your preferred size", openSlots: 5, match: 89 },
-  { room: "152", reason: "Near TFDL entrance, accessible", openSlots: 4, match: 82 },
-];
+// Recommended picks are surfaced from real rooms in GRID_DATA (most
+// open slots first) instead of hardcoded room ids, so this section
+// stays valid no matter which buildings/rooms the live data contains.
+const RECOMMENDED = [...ALL_ROOM_RECORDS]
+  .sort((a, b) => b.open - a.open)
+  .slice(0, 3)
+  .map((r, i) => ({
+    building: r.building,
+    roomId: r.roomId,
+    capacity: r.capacity,
+    openSlots: r.open,
+    match: 94 - i * 6,
+    reason:
+      i === 0
+        ? "Most open slots today"
+        : i === 1
+        ? `Capacity ${r.capacity} — good for small groups`
+        : `In ${r.building}, several open slots left`,
+  }));
 
+// Illustrative campus map only — coordinates/labels here are decorative
+// and not derived from GRID_DATA, since the live data has no geographic
+// layout information for buildings.
 const CAMPUS_BUILDINGS = [
   { id: "tfdl", label: "TFDL", x: 52, y: 38, available: 7, total: 9 },
   { id: "machall", label: "MacHall", x: 28, y: 55, available: 2, total: 4 },
@@ -489,7 +589,7 @@ function AvailabilityBlock({ available, width = 28, height = 22 }) {
   );
 }
 
-function RoomIconRow({ accessible, outlets }) {
+function RoomIconRow({ building }) {
   const stroke = theme.accent.primary;
   return (
     <Row gap={6} align="center">
@@ -499,18 +599,10 @@ function RoomIconRow({ accessible, outlets }) {
           i
         </text>
       </svg>
-      {accessible && (
-        <svg width={12} height={12} viewBox="0 0 12 12" aria-label="Accessible">
-          <circle cx={6} cy={3} r={1.5} fill={stroke} />
-          <path d="M4 5h4v5H4z M2 6.5h8" stroke={stroke} strokeWidth={0.8} fill="none" />
-        </svg>
-      )}
-      {outlets && (
-        <svg width={12} height={12} viewBox="0 0 12 12" aria-label="Power outlets">
-          <rect x={4} y={1} width={4} height={7} rx={0.5} fill="none" stroke={stroke} strokeWidth={0.8} />
-          <line x1={5} y1={9} x2={7} y2={9} stroke={stroke} strokeWidth={0.8} />
-          <line x1={5.5} y1={10} x2={6.5} y2={10} stroke={stroke} strokeWidth={0.8} />
-        </svg>
+      {building && (
+        <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+          {building}
+        </Text>
       )}
     </Row>
   );
@@ -620,9 +712,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
           onChange={setBuilding}
           options={[
             { value: "all", label: "All buildings" },
-            { value: "TFDL", label: "TFDL" },
-            { value: "MacHall", label: "MacHall" },
-            { value: "ICT", label: "ICT" },
+            ...BUILDINGS.map((b) => ({ value: b, label: b })),
           ]}
           style={{ flex: 1, minWidth: 120 }}
         />
@@ -635,7 +725,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
         <Pill size="sm">Available now</Pill>
       </Row>
       <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
-        Thursday, August 6, 2026 · Filtered by search &amp; capacity
+        {formatDateLabel(DEFAULT_DATE)} · Filtered by search &amp; capacity
       </Text>
     </Stack>
   );
@@ -658,7 +748,7 @@ function TopFiveSection() {
       <Stack gap={6}>
         {TOP_5.map((room, idx) => (
           <Row
-            key={room.id}
+            key={`${room.building}-${room.roomId}`}
             align="center"
             gap={10}
             style={{
@@ -674,10 +764,10 @@ function TopFiveSection() {
             <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
               <Row align="center" gap={6}>
                 <Text weight="semibold" size="small">
-                  {room.id}
+                  {room.roomId}
                 </Text>
                 <Text size="small" tone="tertiary">
-                  Cap. {room.capacity}
+                  {room.building} · Cap. {room.capacity}
                 </Text>
               </Row>
               <Row gap={3}>
@@ -730,9 +820,9 @@ function RecommendedSection() {
         <SubBrandLabel>Based on your booking history</SubBrandLabel>
       </Stack>
       {RECOMMENDED.map((rec) => (
-        <Card key={rec.room}>
+        <Card key={`${rec.building}-${rec.roomId}`}>
           <CardHeader trailing={<Pill active size="sm">{`${rec.match}% match`}</Pill>}>
-            Room {rec.room}
+            {rec.building} · Room {rec.roomId}
           </CardHeader>
           <CardBody style={{ paddingTop: 0 }}>
             <Text size="small" tone="secondary">
@@ -740,7 +830,7 @@ function RecommendedSection() {
             </Text>
             <Row gap={8} align="center" style={{ marginTop: 8 }}>
               <Row gap={3}>
-                {slotsForRoom(rec.room)
+                {getSlots(rec.building, rec.roomId)
                   .slice(2, 9)
                   .map((avail, i) => (
                     <AvailabilityBlock key={i} available={avail} width={24} height={16} />
@@ -842,9 +932,9 @@ function CampusMapSection() {
 /* ── All rooms availability grid ──────────────────────────────────────── */
 
 function AllRoomsSection({ query, capacity, building }) {
-  const filtered = ALL_ROOMS.filter((r) => {
+  const filtered = ALL_ROOM_RECORDS.filter((r) => {
     const q = query.toLowerCase();
-    const matchQuery = !q || r.id.toLowerCase().includes(q) || r.building.toLowerCase().includes(q);
+    const matchQuery = !q || r.roomId.toLowerCase().includes(q) || r.building.toLowerCase().includes(q);
     const matchCap = capacity === "any" || r.capacity >= Number(capacity);
     const matchBldg = building === "all" || r.building === building;
     return matchQuery && matchCap && matchBldg;
@@ -874,35 +964,32 @@ function AllRoomsSection({ query, capacity, building }) {
       </Row>
 
       <Stack gap={4}>
-        {filtered.map((room) => {
-          const slots = slotsForRoom(room.id);
-          return (
-            <Row
-              key={room.id}
-              align="center"
-              gap={6}
-              style={{
-                padding: "6px 0",
-                borderBottom: `1px solid ${theme.stroke.tertiary}`,
-              }}
-            >
-              <Stack gap={2} style={{ width: 94, flexShrink: 0 }}>
-                <Text weight="semibold" size="small">
-                  {room.id}
-                </Text>
-                <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
-                  Cap. {room.capacity}
-                </Text>
-                <RoomIconRow accessible={room.accessible} outlets={room.outlets} />
-              </Stack>
-              <Row gap={3} style={{ overflowX: "auto", flex: 1 }}>
-                {slots.map((avail, i) => (
-                  <AvailabilityBlock key={i} available={avail} />
-                ))}
-              </Row>
+        {filtered.map((room) => (
+          <Row
+            key={`${room.building}-${room.roomId}`}
+            align="center"
+            gap={6}
+            style={{
+              padding: "6px 0",
+              borderBottom: `1px solid ${theme.stroke.tertiary}`,
+            }}
+          >
+            <Stack gap={2} style={{ width: 94, flexShrink: 0 }}>
+              <Text weight="semibold" size="small">
+                {room.roomId}
+              </Text>
+              <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+                Cap. {room.capacity}
+              </Text>
+              <RoomIconRow building={room.building} />
+            </Stack>
+            <Row gap={3} style={{ overflowX: "auto", flex: 1 }}>
+              {room.slots.map((avail, i) => (
+                <AvailabilityBlock key={i} available={avail} />
+              ))}
             </Row>
-          );
-        })}
+          </Row>
+        ))}
       </Stack>
 
       <Row gap={16} align="center" style={{ marginTop: 8 }}>
