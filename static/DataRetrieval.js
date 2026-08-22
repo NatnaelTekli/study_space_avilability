@@ -49,11 +49,19 @@ async function parseExternalPageForTitle(itemId) {
     }
 }
 
-export default async function getGridData() {
+const buildingIds = {
+    TFDL: {lid: '1035', gid: '2456'},
+    Gallagher: {lid: '3542', gid: '8180'},
+    TFDLLarge: {lid: '1035', gid: '7947'},
+    TFDLLabNext: {lid: '1394', gid: '5408'},
+    HealthSciences: {lid: '1396', gid: '2458'},
+};
+
+export default async function getGridData(lid, gid) {
     try {
         const formData = new URLSearchParams();
-        formData.append('lid', '1035');
-        formData.append('gid', '2456');
+        formData.append('lid', lid);   //3542 Gallagher Library  //1035 TFDL
+        formData.append('gid', gid);   //8180 Gallagher Library  //2456 TFDL
         formData.append('eid', '9578'); //-1 //typcially changes
         formData.append('seat', '0');
         formData.append('seatId', '0');
@@ -97,26 +105,19 @@ export default async function getGridData() {
             var new_title = "";
             for (let ind = 0; ind < title.length; ind++) {
                 const current_char = title[ind];
-                if (count_numbers >= 3) {
-                    if (current_char != " ") {
-                        new_title += current_char;
-                        break;
-                    }
-                } else {
-                    if (typeof Number(current_char) == "number") {
+                if (count_numbers < 3) {
+                    if (/^\d$/.test(current_char)) { // Check if the character is a digit
                         count_numbers += 1;
                         new_title += current_char;
+                    }
+                } else {
+                    if (current_char != " ") { // Get the first alphabetical character after the room number (e.g., "350J")
+                        new_title += current_char;
+                        break;
                     }
                 }
             }
             title = new_title; // Update title to only include the room number and letter (e.g., "350J")
-            
-            // for (let ind = 0; ind < title.length; ind++) {
-            //     if (title[ind] == "(" || title[ind] == " ") {
-            //         title = title.slice(0, ind - 1); // Remove the capacity part //350J (Capacity 4) -> 350J
-            //         break;
-            //     }
-            // }
             
             // Extract just the time part (e.g., "11:00:00") from "2026-08-05 11:00:00"
             const parts = item.start ? item.start.split(" ") : ["", ""];
@@ -126,6 +127,7 @@ export default async function getGridData() {
             var endIndex = rawTime.indexOf(":");
             var time = "";
             let numTime = Number(rawTime.slice(0, endIndex)); //We want the time to be a single number
+            
             if (numTime >= 12) {
                 var mockTime = numTime - 12;
                 if (mockTime == 0) {
@@ -155,16 +157,27 @@ export default async function getGridData() {
             });
         }
 
-        console.log(statusByItem);
+        // console.log(statusByItem);
+        return statusByItem
         // console.log(statusByItem["350F (Capacity 4)"]["2026-08-11"])
     } catch (error) {
         console.error("Failed:", error);
     }
 }
 
-const testCode = true;
+async function getAllGridData() {
+    var allRooms = {};
+    for (var building of Object.keys(buildingIds)) {
+        const { lid, gid } = buildingIds[building];
+        allRooms[building] = await getGridData(lid, gid);
+    }
+    return allRooms;
+}
+
+const testCode = false;
 if (testCode) {
-    getGridData();
+    getAllGridData();
+    // getGridData('3542', '8180');
 }
 
 //Example of one room's availability data structure after processing:
@@ -207,3 +220,20 @@ if (testCode) {
 //       [Object]
 //     ]
 //   }
+
+// '211C': {
+//     '2026-08-11': [
+//       [Object], [Object],
+//       [Object], [Object],
+//       [Object], [Object],
+//       [Object], [Object],
+//       [Object], [Object],
+//       [Object], [Object],
+//       [Object]
+//     ],
+//     capacity: '4'
+//   }
+
+//{
+//Gallagher: { '170A': { '2026-08-11': [Array], capacity: '4' } }
+//}
