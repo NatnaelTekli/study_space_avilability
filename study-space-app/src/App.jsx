@@ -408,6 +408,7 @@ function LineChart({ categories, series, height = 160 }) {
 
 let GRID_DATA = await getAllGridData();
 GRID_DATA = GRID_DATA ?? {}; // Fallback to an empty array [] (or object {}) if GRID_DATA is null or undefined
+console.log(GRID_DATA);
 
 const TIME_SLOTS = ["9a", "10a", "11a", "12p", "1p", "2p", "3p", "4p", "5p", "6p", "7p"];
 
