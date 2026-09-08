@@ -23,7 +23,7 @@ create table if not exists availability_snapshot (
 -- uses the service-role key server-side. If you'd rather let the Supabase JS
 -- client read directly from the browser, enable RLS + a read-only policy:
 --
--- alter table availability_snapshot enable row level security;
+-- alter table availability_snapshot enable row level security; (It might be better to NOT do this for security reasons, and instead keep the service-role key server-side.)
 -- create policy "public read" on availability_snapshot for select using (true);
 --
 -- (Keep the `rooms` table and all writes server-side / service-role only.)
@@ -38,3 +38,7 @@ create table if not exists availability_snapshot (
 -- );
 -- create index if not exists idx_hist_building_time
 --   on availability_history (building, fetched_at desc);
+-- *rooms is a few hundred rows; availability_snapshot is literally one
+-- row per building (max 5). You will never approach the 500 MB free-tier limit.
+-- If you turn on the optional availability_history table at schema.sql:33-40, 
+--that becomes ~144 rows per building per day — still small, but add a retention delete so it doesn't run unbounded for years.
