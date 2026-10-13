@@ -1,0 +1,15 @@
+# Webshare proxy (server-side only)
+WEBSHARE_HOST=
+WEBSHARE_PORT=
+WEBSHARE_USER=
+WEBSHARE_PASS=
+
+# Supabase (service-role key is SECRET — server-side only, never in the browser)
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Protects /api/refresh so only Vercel Cron can trigger a Webshare fetch.
+# Vercel automatically sends this as `Authorization: Bearer $CRON_SECRET`.
+CRON_SECRET=
+
+# FOR YOUR OWN PROJECT, RENAME THIS FILE TO .env (DO NOT SHARE YOUR UPDATED .env!)

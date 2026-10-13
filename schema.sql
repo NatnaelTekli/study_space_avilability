@@ -19,17 +19,34 @@ create table if not exists availability_snapshot (
   fetched_at timestamptz default now()
 );
 
--- The browser reads snapshots through the /api/availability endpoint, which
--- uses the service-role key server-side. If you'd rather let the Supabase JS
--- client read directly from the browser, enable RLS + a read-only policy:
+-- ===========================================================================
+-- ROW LEVEL SECURITY — required, not optional.
+-- ===========================================================================
+-- A table created here with plain `create table` has RLS DISABLED, which means
+-- PostgREST exposes it to the public `anon` role with full select/insert/
+-- update/delete. The anon key ships in any frontend, so without the lines
+-- below anyone could overwrite availability_snapshot and we would serve it.
 --
--- alter table availability_snapshot enable row level security; (It might be better to NOT do this for security reasons, and instead keep the service-role key server-side.)
--- create policy "public read" on availability_snapshot for select using (true);
+-- Nothing in this app needs anon access: browsers read through
+-- /api/availability, which holds the service-role key server-side. So we turn
+-- RLS on and deliberately create NO policies — that denies anon and
+-- authenticated everything. service_role BYPASSES RLS entirely, so the cron
+-- poller (api/refresh.js -> lib/availabilityPoller.js) keeps working unchanged.
 --
--- (Keep the `rooms` table and all writes server-side / service-role only.)
+-- Do NOT add a "public read" policy unless you move reads into the browser's
+-- Supabase client; it would re-open the table for no benefit.
+alter table rooms                 enable row level security;
+alter table availability_snapshot enable row level security;
+
+-- Belt and braces: revoke the default PostgREST grants as well, so the tables
+-- are unreachable for these roles even if RLS is ever toggled back off.
+revoke all on rooms                 from anon, authenticated;
+revoke all on availability_snapshot from anon, authenticated;
 
 -- OPTIONAL: keep history for analytics (Postgres is good at this).
 -- Instead of overwriting, append and query the latest per building.
+-- Remember to enable RLS on it too, and add a retention delete so it does not
+-- grow unbounded (~144 rows per building per day at a 10-minute poll).
 -- create table if not exists availability_history (
 --   id         bigserial primary key,
 --   building   text not null,
@@ -38,7 +55,5 @@ create table if not exists availability_snapshot (
 -- );
 -- create index if not exists idx_hist_building_time
 --   on availability_history (building, fetched_at desc);
--- *rooms is a few hundred rows; availability_snapshot is literally one
--- row per building (max 5). You will never approach the 500 MB free-tier limit.
--- If you turn on the optional availability_history table at schema.sql:33-40, 
---that becomes ~144 rows per building per day — still small, but add a retention delete so it doesn't run unbounded for years.
+-- alter table availability_history enable row level security;
+-- revoke all on availability_history from anon, authenticated;

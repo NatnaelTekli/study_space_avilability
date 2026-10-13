@@ -12,7 +12,7 @@ import { refreshAll } from '../lib/availabilityPoller.js';
 export default async function handler(req, res) {
   const auth = req.headers.authorization;
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized' }); // Check is .env contains a CRON_SECRET for authorization
   }
 
   try {
