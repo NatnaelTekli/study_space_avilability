@@ -1,136 +1,88 @@
 import React, { useState, useEffect } from 'react';
 import getAllGridData from '../../static/DataRetrieval';
+import './App.css';
 
-/* ── UCalgary theme (light mode, matches Libraries booking system) ─── */
+/* Theme colors live as CSS variables in App.css. Components below pick
+ * classes from App.css; inline styles are only used for values that come
+ * from props (gap, alignment, grid columns). */
 
-const theme = {
-  bg: { editor: "#FCFCFC", chrome: "#F8F8F8", elevated: "#FCFCFC" },
-  text: {
-    primary: "#141414F0",
-    secondary: "#141414BD",
-    tertiary: "#1414148A",
-    quaternary: "#1414145C",
-    link: "#3685BF",
-    onAccent: "#FCFCFC",
-  },
-  stroke: { primary: "#14141433", secondary: "#1414141F", tertiary: "#14141414" },
-  fill: { primary: "#14141433", secondary: "#14141424", tertiary: "#14141414", quaternary: "#1414140F" },
-  accent: { primary: "#3685BF", control: "#3685BF", controlHover: "#2E76AB" },
-  category: {
-    red: "#CF2D56",
-    green: "#1F8A65",
-    yellow: "#C08532",
-    blue: "#3685BF",
-    gray: "#1414148A",
-  },
-};
-
-function mergeStyle(base, override) {
-  return override ? { ...base, ...override } : base;
+function cx(...classes) {
+  return classes.filter(Boolean).join(" ");
 }
 
 /* ── UI primitives ─────────────────────────────────────────────────── */
 
-function Stack({ children, gap = 0, style }) {
+function Stack({ children, gap = 0, className, style }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap, ...style }}>
+    <div className={cx("stack", className)} style={{ gap, ...style }}>
       {children}
     </div>
   );
 }
 
-function Row({ children, gap = 0, align = "stretch", justify = "start", wrap, style }) {
+function Row({ children, gap = 0, align = "stretch", justify = "start", wrap, className, style }) {
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        gap,
-        alignItems: align,
-        justifyContent: justify,
-        flexWrap: wrap ? "wrap" : "nowrap",
-        ...style,
-      }}
+      className={cx("row", wrap && "row--wrap", className)}
+      style={{ gap, alignItems: align, justifyContent: justify, ...style }}
     >
       {children}
     </div>
   );
 }
 
-function Grid({ children, columns, gap = 0, style }) {
+function Grid({ children, columns, gap = 0, className, style }) {
   const cols = typeof columns === "number" ? `repeat(${columns}, minmax(0, 1fr))` : columns;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: cols, gap, ...style }}>
+    <div className={cx("grid", className)} style={{ gridTemplateColumns: cols, gap, ...style }}>
       {children}
     </div>
   );
 }
 
 function Spacer() {
-  return <div style={{ flex: 1 }} />;
+  return <div className="spacer" />;
 }
 
 function Divider() {
-  return <hr style={{ border: "none", borderTop: `1px solid ${theme.stroke.tertiary}`, margin: 0 }} />;
+  return <hr className="divider" />;
 }
 
-function Text({ children, tone = "primary", size = "body", weight = "normal", style }) {
-  const fontSize = size === "small" ? 12 : 14;
-  const fontWeight = { normal: 400, medium: 500, semibold: 600, bold: 700 }[weight] ?? 400;
+const TEXT_TONES = ["primary", "secondary", "tertiary", "quaternary", "link", "onAccent"];
+const TEXT_WEIGHTS = ["normal", "medium", "semibold", "bold"];
+
+function Text({ children, tone = "primary", size = "body", weight = "normal", className, style }) {
   return (
     <p
-      style={{
-        margin: 0,
-        fontSize,
-        lineHeight: size === "small" ? "16px" : "20px",
-        fontWeight,
-        color: theme.text[tone] ?? theme.text.primary,
-        ...style,
-      }}
+      className={cx(
+        "text",
+        size === "small" && "text--small",
+        `text--${TEXT_WEIGHTS.includes(weight) ? weight : "normal"}`,
+        `text--${TEXT_TONES.includes(tone) ? tone : "primary"}`,
+        className,
+      )}
+      style={style}
     >
       {children}
     </p>
   );
 }
 
-function H2({ children, style }) {
+function H2({ children, className, style }) {
   return (
-    <h2
-      style={{
-        margin: 0,
-        fontSize: 18,
-        lineHeight: "24px",
-        fontWeight: 590,
-        color: theme.text.primary,
-        ...style,
-      }}
-    >
+    <h2 className={cx("h2", className)} style={style}>
       {children}
     </h2>
   );
 }
 
-function Button({ children, variant = "primary", onClick, style }) {
-  const styles = {
-    primary: { background: theme.accent.control, color: theme.text.onAccent, border: "none" },
-    secondary: { background: theme.fill.secondary, color: theme.text.primary, border: `1px solid ${theme.stroke.secondary}` },
-    ghost: { background: "transparent", color: theme.text.secondary, border: "none" },
-  };
+function Button({ children, variant = "primary", onClick, className, style }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        height: 24,
-        padding: "0 10px",
-        borderRadius: 4,
-        fontSize: 12,
-        fontWeight: 500,
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        ...styles[variant],
-        ...style,
-      }}
+      className={cx("btn", `btn--${variant}`, className)}
+      style={style}
     >
       {children}
     </button>
@@ -138,64 +90,37 @@ function Button({ children, variant = "primary", onClick, style }) {
 }
 
 function Pill({ children, active, size = "md", onClick }) {
-  const isSm = size === "sm";
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        fontSize: isSm ? 11 : 12,
-        padding: isSm ? "2px 8px" : "4px 10px",
-        borderRadius: 9999,
-        border: isSm ? "none" : `1px solid ${theme.stroke.secondary}`,
-        background: active ? theme.fill.primary : "transparent",
-        color: theme.text.primary,
-        cursor: onClick ? "pointer" : "default",
-        fontWeight: active ? 600 : 400,
-      }}
+      className={cx("pill", size === "sm" && "pill--sm", active && "pill--active", onClick && "pill--clickable")}
     >
       {children}
     </button>
   );
 }
 
-function TextInput({ value, onChange, placeholder, type = "text", style }) {
+function TextInput({ value, onChange, placeholder, type = "text", className, style }) {
   return (
     <input
       type={type}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
       placeholder={placeholder}
-      style={{
-        height: 28,
-        padding: "0 8px",
-        borderRadius: 4,
-        border: `1px solid ${theme.stroke.secondary}`,
-        background: theme.bg.editor,
-        color: theme.text.primary,
-        fontSize: 13,
-        boxSizing: "border-box",
-        ...style,
-      }}
+      className={cx("text-input", className)}
+      style={style}
     />
   );
 }
 
-function Select({ value, onChange, options, style }) {
+function Select({ value, onChange, options, className, style }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
-      style={{
-        height: 28,
-        padding: "0 8px",
-        borderRadius: 4,
-        border: `1px solid ${theme.stroke.secondary}`,
-        background: theme.bg.editor,
-        color: theme.text.primary,
-        fontSize: 13,
-        ...style,
-      }}
+      className={cx("select", className)}
+      style={style}
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value} disabled={opt.disabled}>
@@ -207,88 +132,41 @@ function Select({ value, onChange, options, style }) {
 }
 
 function Callout({ title, children, tone = "info" }) {
-  const tones = {
-    info: { bg: "#E8F2FA", border: "#3685BF33", color: theme.text.primary },
-    success: { bg: "#E6F4EE", border: "#1F8A6533", color: theme.text.primary },
-    warning: { bg: "#FDF4E6", border: "#C0853233", color: theme.text.primary },
-  };
-  const t = tones[tone] ?? tones.info;
+  const toneClass = ["info", "success", "warning"].includes(tone) ? tone : "info";
   return (
-    <div
-      style={{
-        padding: "8px 10px",
-        borderRadius: 4,
-        background: t.bg,
-        border: `1px solid ${t.border}`,
-        color: t.color,
-        fontSize: 13,
-        lineHeight: "18px",
-      }}
-    >
-      {title && <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>}
+    <div className={cx("callout", `callout--${toneClass}`)}>
+      {title && <div className="callout-title">{title}</div>}
       {children}
     </div>
   );
 }
 
 function Card({ children }) {
-  return (
-    <div
-      style={{
-        border: `1px solid ${theme.stroke.secondary}`,
-        borderRadius: 6,
-        background: theme.bg.editor,
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="card">{children}</div>;
 }
 
 function CardHeader({ children, trailing }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "8px 12px",
-        fontSize: 12,
-        fontWeight: 600,
-        borderBottom: `1px solid ${theme.stroke.tertiary}`,
-      }}
-    >
+    <div className="card-header">
       <span>{children}</span>
       {trailing}
     </div>
   );
 }
 
-function CardBody({ children, style }) {
-  return <div style={{ padding: 12, ...style }}>{children}</div>;
+function CardBody({ children, className, style }) {
+  return (
+    <div className={cx("card-body", className)} style={style}>
+      {children}
+    </div>
+  );
 }
 
-function Stat({ value, label, tone, style }) {
-  const toneColors = {
-    success: theme.category.green,
-    danger: theme.category.red,
-    warning: theme.category.yellow,
-    info: theme.accent.primary,
-  };
+function Stat({ value, label, tone, className, style }) {
   return (
-    <div style={{ textAlign: "center", ...style }}>
-      <div
-        style={{
-          fontSize: 20,
-          fontWeight: 600,
-          color: tone ? toneColors[tone] : theme.text.primary,
-          lineHeight: 1.2,
-        }}
-      >
-        {value}
-      </div>
-      <div style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 2 }}>{label}</div>
+    <div className={cx("stat", className)} style={style}>
+      <div className={cx("stat-value", tone && `stat-value--${tone}`)}>{value}</div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 }
@@ -305,16 +183,12 @@ function LineChart({ categories, series, height = 160 }) {
   const xScale = (i) => pad.left + (i / Math.max(categories.length - 1, 1)) * plotW;
   const yScale = (v) => pad.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
 
-  const seriesColors = {
-    info: theme.accent.primary,
-    neutral: theme.category.gray,
-    success: theme.category.green,
-    danger: theme.category.red,
-  };
+  // Each series sets `color` via its class; marks draw with currentColor.
+  const seriesClass = (tone) => cx("series", tone && `series--${tone}`);
 
   return (
     <div>
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block" }}>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="chart-svg">
         {[30, 50, 70, 90].map((v) => (
           <g key={v}>
             <line
@@ -322,10 +196,10 @@ function LineChart({ categories, series, height = 160 }) {
               y1={yScale(v)}
               x2={width - pad.right}
               y2={yScale(v)}
-              stroke={theme.stroke.tertiary}
+              className="chart-gridline"
               strokeWidth={1}
             />
-            <text x={pad.left - 6} y={yScale(v) + 3} textAnchor="end" fontSize={9} fill={theme.text.tertiary}>
+            <text x={pad.left - 6} y={yScale(v) + 3} textAnchor="end" fontSize={9} className="chart-axis-label">
               {v}
             </text>
           </g>
@@ -337,38 +211,30 @@ function LineChart({ categories, series, height = 160 }) {
             y={height - 6}
             textAnchor="middle"
             fontSize={9}
-            fill={theme.text.tertiary}
+            className="chart-axis-label"
           >
             {cat}
           </text>
         ))}
         {series.map((s) => {
-          const color = seriesColors[s.tone] ?? theme.accent.primary;
           const points = s.data.map((v, i) => `${xScale(i)},${yScale(v)}`).join(" ");
           const areaPoints = `${xScale(0)},${yScale(yMin)} ${points} ${xScale(s.data.length - 1)},${yScale(yMin)}`;
           return (
-            <g key={s.name}>
-              <polygon points={areaPoints} fill={color} opacity={0.12} />
-              <polyline points={points} fill="none" stroke={color} strokeWidth={2} />
+            <g key={s.name} className={seriesClass(s.tone)}>
+              <polygon points={areaPoints} fill="currentColor" opacity={0.12} />
+              <polyline points={points} fill="none" stroke="currentColor" strokeWidth={2} />
               {s.data.map((v, i) => (
-                <circle key={i} cx={xScale(i)} cy={yScale(v)} r={3} fill={color} />
+                <circle key={i} cx={xScale(i)} cy={yScale(v)} r={3} fill="currentColor" />
               ))}
             </g>
           );
         })}
       </svg>
-      <Row gap={12} style={{ marginTop: 4, paddingLeft: 4 }}>
+      <Row gap={12} className="chart-legend">
         {series.map((s) => (
           <Row key={s.name} gap={4} align="center">
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                background: seriesColors[s.tone] ?? theme.accent.primary,
-              }}
-            />
-            <span style={{ fontSize: 10, color: theme.text.secondary }}>{s.name}</span>
+            <div className={cx("chart-legend-dot", seriesClass(s.tone))} />
+            <span className="chart-legend-label">{s.name}</span>
           </Row>
         ))}
       </Row>
@@ -536,53 +402,28 @@ const CAMPUS_BUILDINGS = [
 
 /* ── Brand helpers ──────────────────────────────────────────────────── */
 
-function BrandLabel({ children, style }) {
-  return (
-    <span
-      style={mergeStyle(
-        {
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: theme.category.red,
-        },
-        style,
-      )}
-    >
-      {children}
-    </span>
-  );
+function BrandLabel({ children, className }) {
+  return <span className={cx("brand-label", className)}>{children}</span>;
 }
 
 function SubBrandLabel({ children }) {
-  return (
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 600,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-        color: theme.text.tertiary,
-      }}
-    >
-      {children}
-    </span>
-  );
+  return <span className="sub-brand-label">{children}</span>;
 }
 
 /* ── Availability block (striped, like web booking grid) ─────────────── */
 
 function AvailabilityBlock({ available, width = 28, height = 22 }) {
-  const fill = available ? theme.category.green : theme.category.red;
-  const stripe = theme.text.onAccent;
   const pid = `stripe-${available ? "g" : "r"}-${width}-${height}`;
   return (
-    <svg width={width} height={height} style={{ flexShrink: 0, borderRadius: 2 }}>
+    <svg
+      width={width}
+      height={height}
+      className={cx("avail-block", available ? "avail-block--open" : "avail-block--booked")}
+    >
       <defs>
         <pattern id={pid} patternUnits="userSpaceOnUse" width={6} height={6} patternTransform="rotate(45)">
-          <rect width={6} height={6} fill={fill} />
-          <line x1={0} y1={0} x2={0} y2={6} stroke={stripe} strokeWidth={1.5} opacity={0.35} />
+          <rect width={6} height={6} className="avail-block-fill" />
+          <line x1={0} y1={0} x2={0} y2={6} className="avail-block-stripe" strokeWidth={1.5} opacity={0.35} />
         </pattern>
       </defs>
       <rect width={width} height={height} fill={`url(#${pid})`} rx={2} />
@@ -591,17 +432,16 @@ function AvailabilityBlock({ available, width = 28, height = 22 }) {
 }
 
 function RoomIconRow({ building }) {
-  const stroke = theme.accent.primary;
   return (
     <Row gap={6} align="center">
-      <svg width={12} height={12} viewBox="0 0 12 12" aria-label="Room info">
-        <rect x={1} y={1} width={10} height={10} rx={1} fill="none" stroke={stroke} strokeWidth={1} />
-        <text x={6} y={8.5} textAnchor="middle" fontSize={7} fill={stroke} fontWeight={700}>
+      <svg width={12} height={12} viewBox="0 0 12 12" aria-label="Room info" className="room-icon">
+        <rect x={1} y={1} width={10} height={10} rx={1} fill="none" strokeWidth={1} />
+        <text x={6} y={8.5} textAnchor="middle" fontSize={7} fontWeight={700}>
           i
         </text>
       </svg>
       {building && (
-        <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+        <Text size="small" tone="tertiary" className="caption">
           {building}
         </Text>
       )}
@@ -613,26 +453,8 @@ function RoomIconRow({ building }) {
 
 function PhoneFrame({ children }) {
   return (
-    <div
-      style={{
-        maxWidth: 390,
-        margin: "0 auto",
-        border: `2px solid ${theme.stroke.primary}`,
-        borderRadius: 28,
-        overflow: "hidden",
-        background: theme.bg.editor,
-      }}
-    >
-      <Row
-        justify="space-between"
-        align="center"
-        style={{
-          padding: "8px 20px 4px",
-          background: theme.bg.chrome,
-          fontSize: 11,
-          color: theme.text.secondary,
-        }}
-      >
+    <div className="phone-frame">
+      <Row justify="space-between" align="center" className="phone-status-bar">
         <span>10:46</span>
         <span>LTE ▮▮▮</span>
       </Row>
@@ -646,35 +468,20 @@ function PhoneFrame({ children }) {
 function AppHeader() {
   return (
     <Stack gap={0}>
-      <Row
-        align="center"
-        gap={10}
-        style={{
-          padding: "10px 16px",
-          background: theme.bg.editor,
-          borderBottom: `1px solid ${theme.stroke.tertiary}`,
-        }}
-      >
+      <Row align="center" gap={10} className="app-header-bar">
         <svg width={32} height={32} viewBox="0 0 32 32" aria-hidden="true">
-          <rect x={2} y={4} width={28} height={24} rx={2} fill={theme.category.red} />
-          <rect x={6} y={8} width={20} height={8} fill={theme.category.yellow} opacity={0.9} />
-          <rect x={10} y={18} width={12} height={6} fill={theme.bg.editor} opacity={0.85} />
+          <rect x={2} y={4} width={28} height={24} rx={2} className="app-logo-base" />
+          <rect x={6} y={8} width={20} height={8} className="app-logo-top" opacity={0.9} />
+          <rect x={10} y={18} width={12} height={6} className="app-logo-bottom" opacity={0.85} />
         </svg>
         <Stack gap={0}>
-          <Text size="small" tone="secondary" style={{ fontSize: 10, lineHeight: "14px" }}>
+          <Text size="small" tone="secondary" className="app-header-university">
             University of Calgary
           </Text>
-          <BrandLabel style={{ fontSize: 13 }}>Workrooms</BrandLabel>
+          <BrandLabel className="app-header-brand">Workrooms</BrandLabel>
         </Stack>
       </Row>
-      <Text
-        size="small"
-        style={{
-          padding: "6px 16px 8px",
-          color: theme.text.link,
-          fontSize: 11,
-        }}
-      >
+      <Text size="small" className="app-breadcrumb">
         Libraries Booking System / Space Availability
       </Text>
     </Stack>
@@ -685,7 +492,7 @@ function AppHeader() {
 
 function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBuilding }) {
   return (
-    <Stack gap={10} style={{ padding: "0 16px 12px" }}>
+    <Stack gap={10} className="search-filters">
       <Callout tone="info" title="Student Workrooms">
         These rooms are for UCalgary students. Book up to 2 hours per day.
       </Callout>
@@ -694,7 +501,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
         value={query}
         onChange={setQuery}
         placeholder="Search rooms by name or building…"
-        style={{ width: "100%" }}
+        className="search-input"
       />
       <Row gap={8} wrap>
         <Select
@@ -706,7 +513,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
             { value: "6", label: "Capacity 6" },
             { value: "8", label: "Capacity 8+" },
           ]}
-          style={{ flex: 1, minWidth: 120 }}
+          className="filter-select"
         />
         <Select
           value={building}
@@ -715,7 +522,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
             { value: "all", label: "All buildings" },
             ...BUILDINGS.map((b) => ({ value: b, label: b })),
           ]}
-          style={{ flex: 1, minWidth: 120 }}
+          className="filter-select"
         />
       </Row>
       <Row gap={6} wrap>
@@ -725,7 +532,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
         <Pill size="sm">Outlets</Pill>
         <Pill size="sm">Available now</Pill>
       </Row>
-      <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+      <Text size="small" tone="tertiary" className="caption">
         {formatDateLabel(DEFAULT_DATE)} · Filtered by search &amp; capacity
       </Text>
     </Stack>
@@ -736,7 +543,7 @@ function SearchFilters({ query, setQuery, capacity, setCapacity, building, setBu
 
 function TopFiveSection() {
   return (
-    <Stack gap={8} style={{ padding: "12px 16px" }}>
+    <Stack gap={8} className="section">
       <Row align="center" justify="space-between">
         <Stack gap={2}>
           <BrandLabel>Top 5 Available</BrandLabel>
@@ -748,21 +555,11 @@ function TopFiveSection() {
       </Row>
       <Stack gap={6}>
         {TOP_5.map((room, idx) => (
-          <Row
-            key={`${room.building}-${room.roomId}`}
-            align="center"
-            gap={10}
-            style={{
-              padding: "8px 10px",
-              background: theme.fill.tertiary,
-              borderRadius: 6,
-              border: `1px solid ${theme.stroke.tertiary}`,
-            }}
-          >
-            <Text weight="bold" style={{ width: 18, color: theme.category.red, fontSize: 14 }}>
+          <Row key={`${room.building}-${room.roomId}`} align="center" gap={10} className="top5-item">
+            <Text weight="bold" className="top5-rank">
               {idx + 1}
             </Text>
-            <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+            <Stack gap={2} className="top5-info">
               <Row align="center" gap={6}>
                 <Text weight="semibold" size="small">
                   {room.roomId}
@@ -777,7 +574,7 @@ function TopFiveSection() {
                 ))}
               </Row>
             </Stack>
-            <Stat value={room.open} label="open" tone="success" style={{ minWidth: 44 }} />
+            <Stat value={room.open} label="open" tone="success" className="top5-stat" />
           </Row>
         ))}
       </Stack>
@@ -791,7 +588,7 @@ function WeeklyPredictionSection() {
   const predicted = [62, 58, 71, 65, 48, 82, 76];
   const historical = [55, 52, 68, 60, 44, 78, 70];
   return (
-    <Stack gap={8} style={{ padding: "12px 16px" }}>
+    <Stack gap={8} className="section">
       <Stack gap={2}>
         <BrandLabel>Predicted Availability</BrandLabel>
         <SubBrandLabel>This week · TFDL workrooms</SubBrandLabel>
@@ -804,7 +601,7 @@ function WeeklyPredictionSection() {
         ]}
         height={160}
       />
-      <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+      <Text size="small" tone="tertiary" className="caption">
         Source: booking history model · Aug 4–10, 2026 · Percent of slots open 9 am–7 pm
       </Text>
     </Stack>
@@ -815,7 +612,7 @@ function WeeklyPredictionSection() {
 
 function RecommendedSection() {
   return (
-    <Stack gap={8} style={{ padding: "12px 16px" }}>
+    <Stack gap={8} className="section">
       <Stack gap={2}>
         <BrandLabel>Recommended For You</BrandLabel>
         <SubBrandLabel>Based on your booking history</SubBrandLabel>
@@ -825,11 +622,11 @@ function RecommendedSection() {
           <CardHeader trailing={<Pill active size="sm">{`${rec.match}% match`}</Pill>}>
             {rec.building} · Room {rec.roomId}
           </CardHeader>
-          <CardBody style={{ paddingTop: 0 }}>
+          <CardBody className="rec-card-body">
             <Text size="small" tone="secondary">
               {rec.reason}
             </Text>
-            <Row gap={8} align="center" style={{ marginTop: 8 }}>
+            <Row gap={8} align="center" className="rec-actions">
               <Row gap={3}>
                 {getSlots(rec.building, rec.roomId)
                   .slice(2, 9)
@@ -849,66 +646,63 @@ function RecommendedSection() {
 
 /* ── Campus map (satellite-style SVG) ───────────────────────────────── */
 
+function availabilityLevel(ratio) {
+  return ratio >= 0.6 ? "high" : ratio >= 0.3 ? "med" : "low";
+}
+
 function CampusMapSection() {
   return (
-    <Stack gap={8} style={{ padding: "12px 16px" }}>
+    <Stack gap={8} className="section">
       <Stack gap={2}>
         <BrandLabel>Campus Availability Map</BrandLabel>
         <SubBrandLabel>Satellite view · live room status</SubBrandLabel>
       </Stack>
-      <div
-        style={{
-          position: "relative",
-          borderRadius: 8,
-          overflow: "hidden",
-          border: `1px solid ${theme.stroke.secondary}`,
-        }}
-      >
-        <svg viewBox="0 0 100 80" width="100%" style={{ display: "block" }}>
-          <rect width={100} height={80} fill={theme.fill.secondary} />
+      <div className="campus-map">
+        <svg viewBox="0 0 100 80" width="100%" className="campus-map-svg">
+          <rect width={100} height={80} className="map-bg" />
           <path
             d="M0 40 H100 M50 0 V80 M15 60 Q40 45 70 55"
-            stroke={theme.stroke.primary}
+            className="map-roads"
             strokeWidth={0.6}
             fill="none"
             opacity={0.5}
           />
-          <ellipse cx={22} cy={48} rx={10} ry={7} fill={theme.category.green} opacity={0.15} />
-          <ellipse cx={75} cy={42} rx={8} ry={6} fill={theme.category.green} opacity={0.12} />
-          {CAMPUS_BUILDINGS.map((b) => {
-            const ratio = b.available / b.total;
-            const tone =
-              ratio >= 0.6 ? theme.category.green : ratio >= 0.3 ? theme.category.yellow : theme.category.red;
-            return (
-              <g key={b.id}>
-                <rect
-                  x={b.x - 5}
-                  y={b.y - 3}
-                  width={10}
-                  height={6}
-                  fill={theme.fill.primary}
-                  stroke={theme.stroke.secondary}
-                  strokeWidth={0.3}
-                  rx={0.5}
-                />
-                <circle cx={b.x} cy={b.y} r={2.8} fill={tone} stroke={theme.bg.editor} strokeWidth={0.4} />
-                <text x={b.x} y={b.y + 8} textAnchor="middle" fontSize={3.2} fill={theme.text.secondary}>
-                  {b.label}
-                </text>
-              </g>
-            );
-          })}
-          <rect x={2} y={2} width={28} height={14} fill={theme.bg.editor} opacity={0.88} rx={1} />
-          <circle cx={6} cy={6} r={1.5} fill={theme.category.green} />
-          <text x={9} y={7.2} fontSize={2.8} fill={theme.text.secondary}>
+          <ellipse cx={22} cy={48} rx={10} ry={7} className="map-park" opacity={0.15} />
+          <ellipse cx={75} cy={42} rx={8} ry={6} className="map-park" opacity={0.12} />
+          {CAMPUS_BUILDINGS.map((b) => (
+            <g key={b.id}>
+              <rect
+                x={b.x - 5}
+                y={b.y - 3}
+                width={10}
+                height={6}
+                className="map-building"
+                strokeWidth={0.3}
+                rx={0.5}
+              />
+              <circle
+                cx={b.x}
+                cy={b.y}
+                r={2.8}
+                className={cx("map-pin", `map-dot--${availabilityLevel(b.available / b.total)}`)}
+                strokeWidth={0.4}
+              />
+              <text x={b.x} y={b.y + 8} textAnchor="middle" fontSize={3.2} className="map-label">
+                {b.label}
+              </text>
+            </g>
+          ))}
+          <rect x={2} y={2} width={28} height={14} className="map-legend-bg" opacity={0.88} rx={1} />
+          <circle cx={6} cy={6} r={1.5} className="map-dot--high" />
+          <text x={9} y={7.2} fontSize={2.8} className="map-label">
             High
           </text>
-          <circle cx={6} cy={11} r={1.5} fill={theme.category.yellow} />
-          <text x={9} y={12.2} fontSize={2.8} fill={theme.text.secondary}>
+          <circle cx={6} cy={11} r={1.5} className="map-dot--med" />
+          <text x={9} y={12.2} fontSize={2.8} className="map-label">
             Med
           </text>
-          <circle cx={17} cy={6} r={1.5} fill={theme.category.red} />
-          <text x={20} y={7.2} fontSize={2.8} fill={theme.text.secondary}>
+          <circle cx={17} cy={6} r={1.5} className="map-dot--low" />
+          <text x={20} y={7.2} fontSize={2.8} className="map-label">
             Low
           </text>
         </svg>
@@ -923,7 +717,7 @@ function CampusMapSection() {
           />
         ))}
       </Grid>
-      <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+      <Text size="small" tone="tertiary" className="caption">
         Tap a building pin to filter rooms below · Source: live booking feed
       </Text>
     </Stack>
@@ -942,7 +736,7 @@ function AllRoomsSection({ query, capacity, building }) {
   });
 
   return (
-    <Stack gap={8} style={{ padding: "12px 16px 24px" }}>
+    <Stack gap={8} className="section section--last">
       <Row align="center" justify="space-between">
         <Stack gap={2}>
           <BrandLabel>All Room Availability</BrandLabel>
@@ -951,14 +745,9 @@ function AllRoomsSection({ query, capacity, building }) {
         <Button variant="secondary">Go To Date</Button>
       </Row>
 
-      <Row gap={0} style={{ paddingLeft: 100, overflowX: "auto" }}>
+      <Row gap={0} className="time-header">
         {TIME_SLOTS.map((t) => (
-          <Text
-            key={t}
-            size="small"
-            tone="tertiary"
-            style={{ width: 28, flexShrink: 0, fontSize: 9, textAlign: "center" }}
-          >
+          <Text key={t} size="small" tone="tertiary" className="time-header-label">
             {t}
           </Text>
         ))}
@@ -966,25 +755,17 @@ function AllRoomsSection({ query, capacity, building }) {
 
       <Stack gap={4}>
         {filtered.map((room) => (
-          <Row
-            key={`${room.building}-${room.roomId}`}
-            align="center"
-            gap={6}
-            style={{
-              padding: "6px 0",
-              borderBottom: `1px solid ${theme.stroke.tertiary}`,
-            }}
-          >
-            <Stack gap={2} style={{ width: 94, flexShrink: 0 }}>
+          <Row key={`${room.building}-${room.roomId}`} align="center" gap={6} className="room-row">
+            <Stack gap={2} className="room-row-info">
               <Text weight="semibold" size="small">
                 {room.roomId}
               </Text>
-              <Text size="small" tone="tertiary" style={{ fontSize: 10 }}>
+              <Text size="small" tone="tertiary" className="caption">
                 Cap. {room.capacity}
               </Text>
               <RoomIconRow building={room.building} />
             </Stack>
-            <Row gap={3} style={{ overflowX: "auto", flex: 1 }}>
+            <Row gap={3} className="room-row-slots">
               {room.slots.map((avail, i) => (
                 <AvailabilityBlock key={i} available={avail} />
               ))}
@@ -993,7 +774,7 @@ function AllRoomsSection({ query, capacity, building }) {
         ))}
       </Stack>
 
-      <Row gap={16} align="center" style={{ marginTop: 8 }}>
+      <Row gap={16} align="center" className="avail-legend">
         <Row gap={6} align="center">
           <AvailabilityBlock available width={20} height={14} />
           <Text size="small" tone="secondary">
@@ -1006,15 +787,7 @@ function AllRoomsSection({ query, capacity, building }) {
             Booked
           </Text>
         </Row>
-        <div
-          style={{
-            width: 2,
-            height: 18,
-            background: theme.category.red,
-            marginLeft: 4,
-          }}
-          title="Current time"
-        />
+        <div className="now-marker" title="Current time" />
         <Text size="small" tone="tertiary">
           Now
         </Text>
@@ -1028,32 +801,14 @@ function AllRoomsSection({ query, capacity, building }) {
 function TabBar({ active }) {
   const tabs = ["Home", "Book", "Map", "Account"];
   return (
-    <Grid
-      columns={4}
-      gap={0}
-      style={{
-        padding: "10px 0 14px",
-        borderTop: `1px solid ${theme.stroke.tertiary}`,
-        background: theme.bg.chrome,
-      }}
-    >
+    <Grid columns={4} gap={0} className="tab-bar">
       {tabs.map((tab) => (
-        <Stack key={tab} gap={2} style={{ alignItems: "center" }}>
-          <div
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              background: tab === active ? theme.category.red : "transparent",
-            }}
-          />
+        <Stack key={tab} gap={2} className="tab">
+          <div className={cx("tab-dot", tab === active && "tab-dot--active")} />
           <Text
             size="small"
             weight={tab === active ? "semibold" : "normal"}
-            style={{
-              fontSize: 10,
-              color: tab === active ? theme.category.red : theme.text.tertiary,
-            }}
+            className={cx("tab-label", tab === active && "tab-label--active")}
           >
             {tab}
           </Text>
@@ -1072,25 +827,16 @@ export default function UCalgaryRoomBookingMobile() {
   const [activeTab] = useState("Home");
 
   return (
-    <div
-      style={{
-        background: theme.bg.chrome,
-        minHeight: "100vh",
-        padding: "16px 12px 24px",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      }}
-    >
-      <Stack gap={12} style={{ maxWidth: 420, margin: "0 auto" }}>
-        <H2 style={{ textAlign: "center", color: theme.text.secondary, fontSize: 14, fontWeight: 500 }}>
-          Mobile App UI — UCalgary Room Booking
-        </H2>
-        <Text tone="tertiary" size="small" style={{ textAlign: "center", fontSize: 11 }}>
+    <div className="app-shell">
+      <Stack gap={12} className="app-content">
+        <H2 className="page-title">Mobile App UI — UCalgary Room Booking</H2>
+        <Text tone="tertiary" size="small" className="page-subtitle">
           Design mockup matching Libraries &amp; Cultural Resources booking system
         </Text>
 
         <PhoneFrame>
           <AppHeader />
-          <div style={{ maxHeight: 680, overflowY: "auto" }}>
+          <div className="phone-scroll">
             <SearchFilters
               query={query}
               setQuery={setQuery}
