@@ -276,7 +276,47 @@ let GRID_DATA = await getAllGridData();
 GRID_DATA = GRID_DATA ?? {}; // Fallback to an empty array [] (or object {}) if GRID_DATA is null or undefined
 console.log(GRID_DATA);
 
-const TIME_SLOTS = ["9a", "10a", "11a", "12p", "1p", "2p", "3p", "4p", "5p", "6p", "7p"];
+// Time axis. Derived from whatever the backend actually returned rather than
+// hardcoded, so a slot outside a fixed 9a–7p window still renders instead of
+// being silently dropped. Falls back to a standard day when there is no data
+// yet, so the grid still draws a frame on a cold start.
+const FALLBACK_TIME_SLOTS = ["9a", "10a", "11a", "12p", "1p", "2p", "3p", "4p", "5p", "6p", "7p"];
+
+// "9a" -> 9, "12p" -> 12, "7p" -> 19. Used to order the axis.
+function slotHour(label) {
+  const m = /^(\d+)([ap])$/.exec(label || "");
+  if (!m) return 0;
+  const h = Number(m[1]) % 12;
+  return m[2] === "p" ? h + 12 : h;
+}
+
+function deriveTimeSlots() {
+  const seen = new Set();
+  Object.keys(GRID_DATA).forEach((buildingName) => {
+    const rooms = GRID_DATA[buildingName] || {};
+    Object.keys(rooms).forEach((roomId) => {
+      const room = rooms[roomId] || {};
+      Object.keys(room).forEach((key) => {
+        if (key === "capacity") return;
+        (room[key] || []).forEach((entry) => {
+          if (entry && entry.time) seen.add(entry.time);
+        });
+      });
+    });
+  });
+  return seen.size ? [...seen].sort((a, b) => slotHour(a) - slotHour(b)) : FALLBACK_TIME_SLOTS;
+}
+
+const TIME_SLOTS = deriveTimeSlots();
+
+function slotToClock(label) {
+  const m = /^(\d+)([ap])$/.exec(label || "");
+  return m ? `${m[1]} ${m[2] === "a" ? "am" : "pm"}` : label || "";
+}
+
+const TIME_RANGE_LABEL = TIME_SLOTS.length
+  ? `${slotToClock(TIME_SLOTS[0])} – ${slotToClock(TIME_SLOTS[TIME_SLOTS.length - 1])}`
+  : "No times available";
 
 function isSlotAvailable(status) {
   return status === true || status === "True" || status === "true";
@@ -740,7 +780,7 @@ function AllRoomsSection({ query, capacity, building }) {
       <Row align="center" justify="space-between">
         <Stack gap={2}>
           <BrandLabel>All Room Availability</BrandLabel>
-          <SubBrandLabel>{`${filtered.length} rooms · 9 am – 7 pm`}</SubBrandLabel>
+          <SubBrandLabel>{`${filtered.length} rooms · ${TIME_RANGE_LABEL}`}</SubBrandLabel>
         </Stack>
         <Button variant="secondary">Go To Date</Button>
       </Row>
