@@ -28,10 +28,11 @@ create table if not exists availability_snapshot (
 -- below anyone could overwrite availability_snapshot and we would serve it.
 --
 -- Nothing in this app needs anon access: browsers read through
--- /api/availability, which holds the service-role key server-side. So we turn
+-- /api/availability (the Cloudflare Worker), which holds the service-role key. So we turn
 -- RLS on and deliberately create NO policies — that denies anon and
 -- authenticated everything. service_role BYPASSES RLS entirely, so the cron
--- poller (api/refresh.js -> lib/availabilityPoller.js) keeps working unchanged.
+-- poller (worker/index.js scheduled() -> worker/availabilityPoller.js) keeps
+-- working unchanged.
 --
 -- Do NOT add a "public read" policy unless you move reads into the browser's
 -- Supabase client; it would re-open the table for no benefit.

@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "study-space-app",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-23",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "not_found_handling": "single-page-application",
+    // Send API calls to the Worker instead of falling back to index.html.
+    "run_worker_first": ["/api/*"]
+  },
+  // Replaces the Vercel Cron in vercel.json. Runs scheduled() in worker/index.js.
+  // Cloudflare cron schedules are in UTC.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  }
+  // Secrets are NOT stored here. Set them once per secret with
+  //   npx wrangler secret put SUPABASE_URL
+  // (see .dev.vars.example for the full list); locally they come from .dev.vars.
+}

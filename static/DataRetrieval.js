@@ -2,7 +2,8 @@
 // ---------------------------------------------------------------------------
 // This replaces the old scraper that ran in the browser. It NO LONGER touches
 // the Webshare proxy or workrooms.ucalgary.ca. It just reads the pre-computed
-// snapshot that the cron poller wrote to Supabase, via /api/availability.
+// snapshot that the cron poller wrote to Supabase, via /api/availability
+// (served by study-space-app/worker/index.js).
 //
 // App.jsx is unchanged: it still does
 //     import getAllGridData from '../../static/DataRetrieval';
@@ -12,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 // Same-origin by default. For local `vite dev` against a deployed backend,
-// set VITE_API_BASE=https://your-app.vercel.app in your .env.
+// set VITE_API_BASE=https://study-space-app.<your-subdomain>.workers.dev in your .env.
 const API_BASE = (import.meta?.env?.VITE_API_BASE ?? '').replace(/\/$/, '');
 
 
@@ -50,7 +51,7 @@ function reshapeBuilding(snap) {
 
 export default async function getAllGridData() {
   try {
-    const res = await fetch(`${API_BASE}/api/availability?building=all`, { // API endpoint receives it (api/availability.js)
+    const res = await fetch(`${API_BASE}/api/availability?building=all`, { // API endpoint receives it (study-space-app/worker/index.js)
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) throw new Error(`availability HTTP ${res.status}`);

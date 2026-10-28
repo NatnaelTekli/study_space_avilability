@@ -12,7 +12,7 @@
 // Supabase read load stays flat under a traffic spike.
 // ---------------------------------------------------------------------------
 
-import { getSnapshot, getAllSnapshots } from '../lib/availabilityPoller.js';
+import { getSnapshot, getAllSnapshots } from '../lib/Availabilitypoller.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

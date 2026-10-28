@@ -7,7 +7,7 @@
 // We reject anything else so a random visitor can't burn your 1 GB.
 // ---------------------------------------------------------------------------
 
-import { refreshAll } from '../lib/availabilityPoller.js';
+import { refreshAll } from '../lib/Availabilitypoller.js';
 
 export default async function handler(req, res) {
   const auth = req.headers.authorization;

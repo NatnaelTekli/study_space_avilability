@@ -1,0 +1,16 @@
+# Copy this file to .dev.vars for local development (`npm run dev`).
+# .dev.vars is gitignored — never commit it.
+#
+# In production, set each of these as an encrypted secret instead:
+#   npx wrangler secret put WEBSHARE_HOST
+#   ...and so on for every name below.
+
+# Webshare proxy (server-side only)
+WEBSHARE_HOST=
+WEBSHARE_PORT=
+WEBSHARE_USER=
+WEBSHARE_PASS=
+
+# Supabase (service-role key is SECRET — server-side only, never in the browser)
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
