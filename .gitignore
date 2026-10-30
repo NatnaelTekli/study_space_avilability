@@ -1,4 +1,5 @@
 .env
+.dev.vars
 
 Notes(ignore)
 node_modules
